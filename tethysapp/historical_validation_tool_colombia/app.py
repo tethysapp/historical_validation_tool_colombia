@@ -8,11 +8,11 @@ class HistoricalValidationToolColombia(TethysAppBase):
 
     name = 'Historical Validation Tool Colombia'
     index = 'historical_validation_tool_colombia:home'
-    icon = 'historical_validation_tool_colombia/images/icon.gif'
+    icon = 'historical_validation_tool_colombia/images/historic_validation_colombia_logo.png'
     package = 'historical_validation_tool_colombia'
     root_url = 'historical-validation-tool-colombia'
-    color = '#2c3e50'
-    description = 'Place a brief description of your app here.'
+    color = '#002255'
+    description = 'This app evaluates the accuracy for the historical streamflow values obtained from Streamflow Prediction Tool in Colombia.'
     tags = ''
     enable_feedback = False
     feedback_emails = []
@@ -28,6 +28,66 @@ class HistoricalValidationToolColombia(TethysAppBase):
                 name='home',
                 url='historical-validation-tool-colombia',
                 controller='historical_validation_tool_colombia.controllers.home'
+            ),
+            UrlMap(
+                name='get_discharge_data',
+                url='get-discharge-data',
+                controller='historical_validation_tool_colombia.controllers.get_discharge_data'
+            ),
+            UrlMap(
+                name='get_simulated_data',
+                url='get-simulated-data',
+                controller='historical_validation_tool_colombia.controllers.get_simulated_data'
+            ),
+            UrlMap(
+                name='get_hydrographs',
+                url='get-hydrographs',
+                controller='historical_validation_tool_colombia.controllers.get_hydrographs'
+            ),
+            UrlMap(
+                name='get_dailyAverages',
+                url='get-dailyAverages',
+                controller='historical_validation_tool_colombia.controllers.get_dailyAverages'
+            ),
+            UrlMap(
+                name='get_monthlyAverages',
+                url='get-monthlyAverages',
+                controller='historical_validation_tool_colombia.controllers.get_monthlyAverages'
+            ),
+            UrlMap(
+                name='get_scatterPlot',
+                url='get-scatterPlot',
+                controller='historical_validation_tool_colombia.controllers.get_scatterPlot'
+            ),
+            UrlMap(
+                name='get_scatterPlotLogScale',
+                url='get-scatterPlotLogScale',
+                controller='historical_validation_tool_colombia.controllers.get_scatterPlotLogScale'
+            ),
+            UrlMap(
+                name='get_volumeAnalysis',
+                url='get-volumeAnalysis',
+                controller='historical_validation_tool_colombia.controllers.get_volumeAnalysis'
+            ),
+            UrlMap(
+                name='volume_table_ajax',
+                url='volume-table-ajax',
+                controller='historical_validation_tool_colombia.controllers.volume_table_ajax'
+            ),
+            UrlMap(
+                name='make_table_ajax',
+                url='make-table-ajax',
+                controller='historical_validation_tool_colombia.controllers.make_table_ajax'
+            ),
+            UrlMap(
+                name='get_observed_discharge_csv',
+                url='get-observed-discharge-csv',
+                controller='historical_validation_tool_colombia.controllers.get_observed_discharge_csv'
+            ),
+            UrlMap(
+                name='get_simulated_discharge_csv',
+                url='get-ssimulated-discharge-csv',
+                controller='historical_validation_tool_colombia.controllers.get_simulated_discharge_csv'
             ),
         )
 

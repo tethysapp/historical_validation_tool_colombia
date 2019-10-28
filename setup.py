@@ -9,8 +9,16 @@ release_package = 'tethysapp-' + app_package
 app_class = 'historical_validation_tool_colombia.app:HistoricalValidationToolColombia'
 app_package_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tethysapp', app_package)
 
-# -- Python Dependencies -- #
-dependencies = []
+### Python Dependencies ###
+dependencies = [
+    'pandas',
+    'requests',
+    'plotly',
+    'numpy',
+    'datetime',
+    'hydrostats',
+    'scipy',
+]
 
 setup(
     name=release_package,
