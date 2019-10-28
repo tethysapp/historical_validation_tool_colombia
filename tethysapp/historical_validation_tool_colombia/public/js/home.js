@@ -33,7 +33,8 @@ function init_map() {
 
 	var streams = new ol.layer.Image({
 		source: new ol.source.ImageWMS({
-			url: 'https://tethys2.byu.edu/geoserver/colombia_hydroviewer/wms',
+			//url: 'https://tethys2.byu.edu/geoserver/colombia_hydroviewer/wms',
+			url: 'https://tethys.byu.edu/geoserver/colombia_hydroviewer/wms',
 			params: { 'LAYERS': 'south_america-colombia-drainage_line' },
 			serverType: 'geoserver',
 			crossOrigin: 'Anonymous'
@@ -43,7 +44,8 @@ function init_map() {
 
 	var stations = new ol.layer.Image({
 		source: new ol.source.ImageWMS({
-			url: 'https://tethys2.byu.edu/geoserver/colombia_hydroviewer/wms',
+			//url: 'https://tethys2.byu.edu/geoserver/colombia_hydroviewer/wms',
+			url: 'https://tethys.byu.edu/geoserver/colombia_hydroviewer/wms',
 			params: { 'LAYERS': 'IDEAM_Stations' },
 			serverType: 'geoserver',
 			crossOrigin: 'Anonymous'
@@ -63,7 +65,8 @@ function init_map() {
 
 }
 
-let ajax_url = 'https://tethys2.byu.edu/geoserver/colombia_hydroviewer/wfs?request=GetCapabilities';
+//let ajax_url = 'https://tethys2.byu.edu/geoserver/colombia_hydroviewer/wfs?request=GetCapabilities';
+let ajax_url = 'https://tethys.byu.edu/geoserver/colombia_hydroviewer/wfs?request=GetCapabilities';
 
 let capabilities = $.ajax(ajax_url, {
 	type: 'GET',
