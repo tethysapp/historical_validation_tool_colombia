@@ -186,8 +186,11 @@ function get_simulated_data (watershed, subbasin, streamcomid, stationcode, stat
                 Plotly.Plots.resize($("#simulated-chart-Q .js-plotly-plot")[0]);
 
                 var params = {
-                    stationcode: stationcode,
-                    stationname: stationname,
+                    watershed: watershed,
+                	subbasin: subbasin,
+                	streamcomid: streamcomid,
+                	stationcode:stationcode,
+                	stationname: stationname
                 };
 
                 $('#submit-download-simulated-discharge').attr({
