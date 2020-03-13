@@ -17,6 +17,7 @@ from scipy import integrate
 import traceback
 from csv import writer as csv_writer
 
+
 def home(request):
     """
     Controller for the app home page.
@@ -31,6 +32,7 @@ def home(request):
 
     return render(request, 'historical_validation_tool_colombia/home.html', context)
 
+
 def get_discharge_data(request):
     """
     Get observed data from csv files in Hydroshare
@@ -43,7 +45,8 @@ def get_discharge_data(request):
         codEstacion = get_data['stationcode']
         nomEstacion = get_data['stationname']
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents' \
+              '/Discharge_Data/{0}.csv'.format(codEstacion)
 
         s = requests.get(url).content
 
@@ -78,6 +81,7 @@ def get_discharge_data(request):
     except Exception as e:
         print(str(e))
         return JsonResponse({'error': 'No observed data found for the selected station.'})
+
 
 def get_simulated_data(request):
     """
@@ -139,6 +143,7 @@ def get_simulated_data(request):
         print(str(e))
         return JsonResponse({'error': 'No simulated data found for the selected station.'})
 
+
 def get_hydrographs(request):
     """
     Get observed data from csv files in Hydroshare
@@ -175,7 +180,8 @@ def get_hydrographs(request):
 
         simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+            codEstacion)
 
         s = requests.get(url).content
 
@@ -214,6 +220,7 @@ def get_hydrographs(request):
         print(str(e))
         return JsonResponse({'error': 'No data found for the selected station.'})
 
+
 def get_dailyAverages(request):
     """
     Get observed data from csv files in Hydroshare
@@ -250,7 +257,8 @@ def get_dailyAverages(request):
 
         simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+            codEstacion)
 
         s = requests.get(url).content
 
@@ -291,6 +299,7 @@ def get_dailyAverages(request):
         print(str(e))
         return JsonResponse({'error': 'No data found for the selected station.'})
 
+
 def get_monthlyAverages(request):
     """
     Get observed data from csv files in Hydroshare
@@ -327,7 +336,8 @@ def get_monthlyAverages(request):
 
         simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+            codEstacion)
 
         s = requests.get(url).content
 
@@ -368,6 +378,7 @@ def get_monthlyAverages(request):
         print(str(e))
         return JsonResponse({'error': 'No data found for the selected station.'})
 
+
 def get_scatterPlot(request):
     """
     Get observed data from csv files in Hydroshare
@@ -404,7 +415,8 @@ def get_scatterPlot(request):
 
         simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+            codEstacion)
 
         s = requests.get(url).content
 
@@ -502,7 +514,8 @@ def get_scatterPlotLogScale(request):
 
         simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+            codEstacion)
 
         s = requests.get(url).content
 
@@ -553,6 +566,7 @@ def get_scatterPlotLogScale(request):
         print(str(e))
         return JsonResponse({'error': 'No data found for the selected station.'})
 
+
 def get_volumeAnalysis(request):
     """
     Get observed data from csv files in Hydroshare
@@ -589,7 +603,8 @@ def get_volumeAnalysis(request):
 
         simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+            codEstacion)
 
         s = requests.get(url).content
 
@@ -682,7 +697,8 @@ def volume_table_ajax(request):
 
         simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+            codEstacion)
 
         s = requests.get(url).content
 
@@ -717,8 +733,8 @@ def volume_table_ajax(request):
         print(str(e))
         return JsonResponse({'error': 'No data found for the selected station.'})
 
-def make_table_ajax(request):
 
+def make_table_ajax(request):
     get_data = request.GET
 
     try:
@@ -731,7 +747,7 @@ def make_table_ajax(request):
         # Indexing the metrics to get the abbreviations
         selected_metric_abbr = get_data.getlist("metrics[]", None)
 
-        #print(selected_metric_abbr)
+        # print(selected_metric_abbr)
 
         # Retrive additional parameters if they exist
         # Retrieving the extra optional parameters
@@ -815,7 +831,8 @@ def make_table_ajax(request):
 
         simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+            codEstacion)
 
         s = requests.get(url).content
 
@@ -858,6 +875,7 @@ def make_table_ajax(request):
         traceback.print_exc()
         return JsonResponse({'error': 'No data found for the selected station.'})
 
+
 def get_observed_discharge_csv(request):
     """
     Get observed data from csv files in Hydroshare
@@ -869,7 +887,8 @@ def get_observed_discharge_csv(request):
         codEstacion = get_data['stationcode']
         nomEstacion = get_data['stationname']
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+            codEstacion)
 
         s = requests.get(url).content
 
@@ -917,7 +936,8 @@ def get_simulated_discharge_csv(request):
         # Token is for the demo account
         request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/', params=request_params, headers=request_headers)
+        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+                               params=request_params, headers=request_headers)
 
         era_pairs = era_res.content.splitlines()
         era_pairs.pop(0)
