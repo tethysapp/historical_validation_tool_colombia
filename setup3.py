@@ -14,11 +14,11 @@ resource_files += find_resource_files('tethysapp/' + app_package + '/public', 't
 
 setup(
     name=release_package,
-    version='4',
-    description='Visualizes GLDAS data through maps and charts',
+    version='1',
+    description='',
     long_description='',
-    keywords='GLDAS',
-    author='Riley Hales',
+    keywords='',
+    author='',
     author_email='',
     url='',
     license='',
