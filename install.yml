@@ -1,6 +1,6 @@
 # This file may be committed to your app code.
 version: 1
-# This should match the app - package name in your setup.py
+# This should match the app - package name in your setup3.py
 name: historical_validation_tool_colombia
 
 requirements:
