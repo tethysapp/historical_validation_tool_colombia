@@ -40,6 +40,11 @@ class HistoricalValidationToolColombia(TethysAppBase):
                 controller='historical_validation_tool_colombia.controllers.get_simulated_data'
             ),
             UrlMap(
+                name='get_simulated__bc_data',
+                url='get-simulated-bc-data',
+                controller='historical_validation_tool_colombia.controllers.get_simulated_bc_data'
+            ),
+            UrlMap(
                 name='get_hydrographs',
                 url='get-hydrographs',
                 controller='historical_validation_tool_colombia.controllers.get_hydrographs'
@@ -80,6 +85,23 @@ class HistoricalValidationToolColombia(TethysAppBase):
                 controller='historical_validation_tool_colombia.controllers.make_table_ajax'
             ),
             UrlMap(
+                name='make_table_ajax2',
+                url='make-table-ajax2',
+                controller='historical_validation_tool_colombia.controllers.make_table_ajax2'
+            ),
+            UrlMap(
+                name='get-available-dates',
+                url='get-available-dates',
+                controller='historical_validation_tool_colombia.controllers.get_available_dates'),
+            UrlMap(
+                name='get-time-series',
+                url='get-time-series',
+                controller='historical_validation_tool_colombia.controllers.get_time_series'),
+            UrlMap(
+                name='get-time-series-bc',
+                url='get-time-series-bc',
+                controller='historical_validation_tool_colombia.controllers.get_time_series_bc'),
+            UrlMap(
                 name='get_observed_discharge_csv',
                 url='get-observed-discharge-csv',
                 controller='historical_validation_tool_colombia.controllers.get_observed_discharge_csv'
@@ -89,6 +111,19 @@ class HistoricalValidationToolColombia(TethysAppBase):
                 url='get-simulated-discharge-csv',
                 controller='historical_validation_tool_colombia.controllers.get_simulated_discharge_csv'
             ),
+            UrlMap(
+                name='get_simulated_bc_discharge_csv',
+                url='get-simulated-bc-discharge-csv',
+                controller='historical_validation_tool_colombia.controllers.get_simulated_bc_discharge_csv'
+            ),
+            UrlMap(
+                name='get_forecast_data_csv',
+                url='get-forecast-data-csv',
+                controller='historical_validation_tool_colombia.controllers.get_forecast_data_csv'),
+            UrlMap(
+                name='get_forecast_bc_data_csv',
+                url='get-forecast-bc-data-csv',
+                controller='historical_validation_tool_colombia.controllers.get_forecast_bc_data_csv'),
         )
 
         return url_maps
