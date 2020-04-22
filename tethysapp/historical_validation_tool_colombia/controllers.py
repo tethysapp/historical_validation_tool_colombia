@@ -2473,320 +2473,78 @@ def get_time_series_bc(request):
 
         '''Correct Forecast'''
 
-        if (mean_forecast.index[0].month == mean_forecast.index[len(mean_forecast.index) - 1].month):
-            iniDate = mean_forecast.index[0]
-            monIdx = iniDate.month
-
-            data_forecast_mean = mean_forecast[mean_forecast.index.month == int(monIdx)]
-            data_forecast_max = max_forecast[max_forecast.index.month == int(monIdx)]
-            data_forecast_min = min_forecast[min_forecast.index.month == int(monIdx)]
-            data_forecast_std_dev_lower = std_dev_lower_forecast[std_dev_lower_forecast.index.month == int(monIdx)]
-            data_forecast_std_dev_upper = std_dev_upper_forecast[std_dev_upper_forecast.index.month == int(monIdx)]
-
-            # filter historic data to only be current month
-            monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-            # filter the observations to current month
-            monObs = observed_df[observed_df.index.month.isin([monIdx])]
-
-            # get maximum value to bound histogram
-            obs_tempMax = np.max(monObs.max())
-            sim_tempMax = np.max(monData.max())
-            obs_tempMin = np.min(monObs.min())
-            sim_tempMin = np.min(monData.min())
-
-            obs_maxVal = math.ceil(obs_tempMax)
-            sim_maxVal = math.ceil(sim_tempMax)
-            obs_minVal = math.floor(obs_tempMin)
-            sim_minVal = math.floor(sim_tempMin)
-
-            n_elementos_obs = len(monObs.iloc[:, 0].values)
-            n_elementos_sim = len(monData.iloc[:, 0].values)
-
-            n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-            n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-            # specify the bin width for histogram (in m3/s)
-            step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-            step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-            # specify histogram bins
-            bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-            bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
-
-            # get the histograms
-            sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-            obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-            # adjust the bins to be the center
-            bin_edges_sim = bin_edges_sim[1:]
-            bin_edges_obs = bin_edges_obs[1:]
-
-            # normalize the histograms
-            sim_counts = sim_counts.astype(float) / monData.size
-            obs_counts = obs_counts.astype(float) / monObs.size
-
-            # calculate the cdfs
-            simcdf = np.cumsum(sim_counts)
-            obscdf = np.cumsum(obs_counts)
-
-            # interpolated function to convert simulated streamflow to prob
-            f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
-
-            # interpolated function to convert simulated prob to observed streamflow
-            backout = interpolate.interp1d(obscdf, bin_edges_obs)
-
-            fixed_dates = data_forecast_mean.index.to_list()
-            fixed_mean_values = backout(f(data_forecast_mean.iloc[:, 0].to_list()))
-            fixed_mean_values = fixed_mean_values.tolist()
-            fixed_max_values = backout(f(data_forecast_max.iloc[:, 0].to_list()))
-            fixed_max_values = fixed_max_values.tolist()
-            fixed_min_values = backout(f(data_forecast_min.iloc[:, 0].to_list()))
-            fixed_min_values = fixed_min_values.tolist()
-            fixed_std_dev_lower_values = backout(f(data_forecast_std_dev_lower.iloc[:, 0].to_list()))
-            fixed_std_dev_lower_values = fixed_std_dev_lower_values.tolist()
-            fixed_std_dev_upper_values = backout(f(data_forecast_std_dev_upper.iloc[:, 0].to_list()))
-            fixed_std_dev_upper_values = fixed_std_dev_upper_values.tolist()
-
-        else:
-
-            iniDate = mean_forecast.index[0]
-            iniMonth = iniDate.month
-            endDate = mean_forecast.index[len(mean_forecast.index) - 1]
-            endMonth = endDate.month
-
-            months = [iniMonth, endMonth]
-
-            fixed_dates = []
-            fixed_mean_values = []
-            fixed_max_values = []
-            fixed_min_values = []
-            fixed_std_dev_lower_values = []
-            fixed_std_dev_upper_values = []
-
-            for month in months:
-
-                data_forecast_mean = mean_forecast[mean_forecast.index.month == int(month)]
-                data_forecast_max = max_forecast[max_forecast.index.month == int(month)]
-                data_forecast_min = min_forecast[min_forecast.index.month == int(month)]
-                data_forecast_std_dev_lower = std_dev_lower_forecast[std_dev_lower_forecast.index.month == int(month)]
-                data_forecast_std_dev_upper = std_dev_upper_forecast[std_dev_upper_forecast.index.month == int(month)]
-
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([month])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([month])]
-
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
-
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
-
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
-
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
-
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
-
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
-
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
-
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
-
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
-
-                fixed_date = data_forecast_mean.index.to_list()
-                fixed_mean_value = backout(f(data_forecast_mean.iloc[:, 0].to_list()))
-                fixed_mean_value = fixed_mean_value.tolist()
-                fixed_max_value = backout(f(data_forecast_max.iloc[:, 0].to_list()))
-                fixed_max_value = fixed_max_value.tolist()
-                fixed_min_value = backout(f(data_forecast_min.iloc[:, 0].to_list()))
-                fixed_min_value = fixed_min_value.tolist()
-                fixed_std_dev_lower_value = backout(f(data_forecast_std_dev_lower.iloc[:, 0].to_list()))
-                fixed_std_dev_lower_value = fixed_std_dev_lower_value.tolist()
-                fixed_std_dev_upper_value = backout(f(data_forecast_std_dev_upper.iloc[:, 0].to_list()))
-                fixed_std_dev_upper_value = fixed_std_dev_upper_value.tolist()
-
-                fixed_dates.append(fixed_date)
-                fixed_mean_values.append(fixed_mean_value)
-                fixed_max_values.append(fixed_max_value)
-                fixed_min_values.append(fixed_min_value)
-                fixed_std_dev_lower_values.append(fixed_std_dev_lower_value)
-                fixed_std_dev_upper_values.append(fixed_std_dev_upper_value)
-
-            fixed_dates = reduce(lambda x, y: x + y, fixed_dates)
-            fixed_mean_values = reduce(lambda x, y: x + y, fixed_mean_values)
-            fixed_max_values = reduce(lambda x, y: x + y, fixed_max_values)
-            fixed_min_values = reduce(lambda x, y: x + y, fixed_min_values)
-            fixed_std_dev_lower_values = reduce(lambda x, y: x + y, fixed_std_dev_lower_values)
-            fixed_std_dev_upper_values = reduce(lambda x, y: x + y, fixed_std_dev_upper_values)
-
-        if (high_res_forecast.index[0].month == high_res_forecast.index[len(high_res_forecast.index) - 1].month):
-            iniDate = high_res_forecast.index[0]
-            monIdx = iniDate.month
-
-            data_forecast_high_res = high_res_forecast[high_res_forecast.index.month == int(monIdx)]
-
-            # filter historic data to only be current month
-            monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-            # filter the observations to current month
-            monObs = observed_df[observed_df.index.month.isin([monIdx])]
-
-            # get maximum value to bound histogram
-            obs_tempMax = np.max(monObs.max())
-            sim_tempMax = np.max(monData.max())
-            obs_tempMin = np.min(monObs.min())
-            sim_tempMin = np.min(monData.min())
-
-            obs_maxVal = math.ceil(obs_tempMax)
-            sim_maxVal = math.ceil(sim_tempMax)
-            obs_minVal = math.floor(obs_tempMin)
-            sim_minVal = math.floor(sim_tempMin)
-
-            n_elementos_obs = len(monObs.iloc[:, 0].values)
-            n_elementos_sim = len(monData.iloc[:, 0].values)
-
-            n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-            n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-            # specify the bin width for histogram (in m3/s)
-            step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-            step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-            # specify histogram bins
-            bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-            bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
-
-            # get the histograms
-            sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-            obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-            # adjust the bins to be the center
-            bin_edges_sim = bin_edges_sim[1:]
-            bin_edges_obs = bin_edges_obs[1:]
-
-            # normalize the histograms
-            sim_counts = sim_counts.astype(float) / monData.size
-            obs_counts = obs_counts.astype(float) / monObs.size
-
-            # calculate the cdfs
-            simcdf = np.cumsum(sim_counts)
-            obscdf = np.cumsum(obs_counts)
-
-            # interpolated function to convert simulated streamflow to prob
-            f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
-
-            # interpolated function to convert simulated prob to observed streamflow
-            backout = interpolate.interp1d(obscdf, bin_edges_obs)
-
-            fixed_dates_high_res = data_forecast_high_res.index.to_list()
-            fixed_high_res_values = backout(f(data_forecast_high_res.iloc[:, 0].to_list()))
-            fixed_high_res_values = fixed_high_res_values.tolist()
-
-        else:
-
-            iniDate = high_res_forecast.index[0]
-            iniMonth = iniDate.month
-            endDate = high_res_forecast.index[len(high_res_forecast.index) - 1]
-            endMonth = endDate.month
-
-            months = [iniMonth, endMonth]
-
-            fixed_dates_high_res = []
-            fixed_high_res_values = []
-
-            for month in months:
-                data_forecast_high_res = high_res_forecast[high_res_forecast.index.month == int(month)]
-
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([month])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([month])]
-
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
-
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
-
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
-
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
-
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
-
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
-
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
-
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
-
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
-
-                fixed_date_high_res = high_res_forecast.index.to_list()
-                fixed_high_res_value = backout(f(high_res_forecast.iloc[:, 0].to_list()))
-                fixed_high_res_value = fixed_high_res_value.tolist()
-
-                fixed_dates_high_res.append(fixed_date)
-                fixed_high_res_values.append(fixed_mean_value)
-
-            fixed_dates_high_res = reduce(lambda x, y: x + y, fixed_dates_high_res)
-            fixed_high_res_values = reduce(lambda x, y: x + y, fixed_high_res_values)
+        iniDate = mean_forecast.index[0]
+        monIdx = iniDate.month
+
+        # filter historic data to only be current month
+        monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+        # filter the observations to current month
+        monObs = observed_df[observed_df.index.month.isin([monIdx])]
+
+        # get maximum value to bound histogram
+        obs_tempMax = np.max(monObs.max())
+        sim_tempMax = np.max(monData.max())
+        obs_tempMin = np.min(monObs.min())
+        sim_tempMin = np.min(monData.min())
+
+        obs_maxVal = math.ceil(obs_tempMax)
+        sim_maxVal = math.ceil(sim_tempMax)
+        obs_minVal = math.floor(obs_tempMin)
+        sim_minVal = math.floor(sim_tempMin)
+
+        n_elementos_obs = len(monObs.iloc[:, 0].values)
+        n_elementos_sim = len(monData.iloc[:, 0].values)
+
+        n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+        n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+
+        # specify the bin width for histogram (in m3/s)
+        step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+        step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+
+        # specify histogram bins
+        bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
+        bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+
+        # get the histograms
+        sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+        obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+
+        # adjust the bins to be the center
+        bin_edges_sim = bin_edges_sim[1:]
+        bin_edges_obs = bin_edges_obs[1:]
+
+        # normalize the histograms
+        sim_counts = sim_counts.astype(float) / monData.size
+        obs_counts = obs_counts.astype(float) / monObs.size
+
+        # calculate the cdfs
+        simcdf = np.cumsum(sim_counts)
+        obscdf = np.cumsum(obs_counts)
+
+        # interpolated function to convert simulated streamflow to prob
+        f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
+
+        # interpolated function to convert simulated prob to observed streamflow
+        backout = interpolate.interp1d(obscdf, bin_edges_obs)
+
+        # Fixing the forecast
+        fixed_dates = mean_forecast.index.to_list()
+        fixed_mean_values = backout(f(mean_forecast.iloc[:, 0].to_list()))
+        fixed_mean_values = fixed_mean_values.tolist()
+        fixed_max_values = backout(f(max_forecast.iloc[:, 0].to_list()))
+        fixed_max_values = fixed_max_values.tolist()
+        fixed_min_values = backout(f(min_forecast.iloc[:, 0].to_list()))
+        fixed_min_values = fixed_min_values.tolist()
+        fixed_std_dev_lower_values = backout(f(std_dev_lower_forecast.iloc[:, 0].to_list()))
+        fixed_std_dev_lower_values = fixed_std_dev_lower_values.tolist()
+        fixed_std_dev_upper_values = backout(f(std_dev_upper_forecast.iloc[:, 0].to_list()))
+        fixed_std_dev_upper_values = fixed_std_dev_upper_values.tolist()
+
+        # Fixing the high-res forecast
+        fixed_dates_high_res = high_res_forecast.index.to_list()
+        fixed_high_res_values = backout(f(high_res_forecast.iloc[:, 0].to_list()))
+        fixed_high_res_values = fixed_high_res_values.tolist()
 
         # ----------------------------------------------
         # Chart Section
@@ -3326,319 +3084,78 @@ def get_forecast_bc_data_csv(request):
 
         '''Correct Forecast'''
 
-        if (mean_forecast.index[0].month == mean_forecast.index[len(mean_forecast.index) - 1].month):
-            iniDate = mean_forecast.index[0]
-            monIdx = iniDate.month
-
-            data_forecast_mean = mean_forecast[mean_forecast.index.month == int(monIdx)]
-            data_forecast_max = max_forecast[max_forecast.index.month == int(monIdx)]
-            data_forecast_min = min_forecast[min_forecast.index.month == int(monIdx)]
-            data_forecast_std_dev_lower = std_dev_lower_forecast[std_dev_lower_forecast.index.month == int(monIdx)]
-            data_forecast_std_dev_upper = std_dev_upper_forecast[std_dev_upper_forecast.index.month == int(monIdx)]
-
-            # filter historic data to only be current month
-            monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-            # filter the observations to current month
-            monObs = observed_df[observed_df.index.month.isin([monIdx])]
-
-            # get maximum value to bound histogram
-            obs_tempMax = np.max(monObs.max())
-            sim_tempMax = np.max(monData.max())
-            obs_tempMin = np.min(monObs.min())
-            sim_tempMin = np.min(monData.min())
-
-            obs_maxVal = math.ceil(obs_tempMax)
-            sim_maxVal = math.ceil(sim_tempMax)
-            obs_minVal = math.floor(obs_tempMin)
-            sim_minVal = math.floor(sim_tempMin)
-
-            n_elementos_obs = len(monObs.iloc[:, 0].values)
-            n_elementos_sim = len(monData.iloc[:, 0].values)
-
-            n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-            n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-            # specify the bin width for histogram (in m3/s)
-            step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-            step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-            # specify histogram bins
-            bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-            bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
-
-            # get the histograms
-            sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-            obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-            # adjust the bins to be the center
-            bin_edges_sim = bin_edges_sim[1:]
-            bin_edges_obs = bin_edges_obs[1:]
-
-            # normalize the histograms
-            sim_counts = sim_counts.astype(float) / monData.size
-            obs_counts = obs_counts.astype(float) / monObs.size
-
-            # calculate the cdfs
-            simcdf = np.cumsum(sim_counts)
-            obscdf = np.cumsum(obs_counts)
-
-            # interpolated function to convert simulated streamflow to prob
-            f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
-
-            # interpolated function to convert simulated prob to observed streamflow
-            backout = interpolate.interp1d(obscdf, bin_edges_obs)
-
-            fixed_dates = data_forecast_mean.index.to_list()
-            fixed_mean_values = backout(f(data_forecast_mean.iloc[:, 0].to_list()))
-            fixed_mean_values = fixed_mean_values.tolist()
-            fixed_max_values = backout(f(data_forecast_max.iloc[:, 0].to_list()))
-            fixed_max_values = fixed_max_values.tolist()
-            fixed_min_values = backout(f(data_forecast_min.iloc[:, 0].to_list()))
-            fixed_min_values = fixed_min_values.tolist()
-            fixed_std_dev_lower_values = backout(f(data_forecast_std_dev_lower.iloc[:, 0].to_list()))
-            fixed_std_dev_lower_values = fixed_std_dev_lower_values.tolist()
-            fixed_std_dev_upper_values = backout(f(data_forecast_std_dev_upper.iloc[:, 0].to_list()))
-            fixed_std_dev_upper_values = fixed_std_dev_upper_values.tolist()
-
-        else:
-
-            iniDate = mean_forecast.index[0]
-            iniMonth = iniDate.month
-            endDate = mean_forecast.index[len(mean_forecast.index) - 1]
-            endMonth = endDate.month
-
-            months = [iniMonth, endMonth]
-
-            fixed_dates = []
-            fixed_mean_values = []
-            fixed_max_values = []
-            fixed_min_values = []
-            fixed_std_dev_lower_values = []
-            fixed_std_dev_upper_values = []
-
-            for month in months:
-                data_forecast_mean = mean_forecast[mean_forecast.index.month == int(month)]
-                data_forecast_max = max_forecast[max_forecast.index.month == int(month)]
-                data_forecast_min = min_forecast[min_forecast.index.month == int(month)]
-                data_forecast_std_dev_lower = std_dev_lower_forecast[std_dev_lower_forecast.index.month == int(month)]
-                data_forecast_std_dev_upper = std_dev_upper_forecast[std_dev_upper_forecast.index.month == int(month)]
-
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([month])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([month])]
-
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
-
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
-
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
-
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
-
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
-
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
-
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
-
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
-
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
-
-                fixed_date = data_forecast_mean.index.to_list()
-                fixed_mean_value = backout(f(data_forecast_mean.iloc[:, 0].to_list()))
-                fixed_mean_value = fixed_mean_value.tolist()
-                fixed_max_value = backout(f(data_forecast_max.iloc[:, 0].to_list()))
-                fixed_max_value = fixed_max_value.tolist()
-                fixed_min_value = backout(f(data_forecast_min.iloc[:, 0].to_list()))
-                fixed_min_value = fixed_min_value.tolist()
-                fixed_std_dev_lower_value = backout(f(data_forecast_std_dev_lower.iloc[:, 0].to_list()))
-                fixed_std_dev_lower_value = fixed_std_dev_lower_value.tolist()
-                fixed_std_dev_upper_value = backout(f(data_forecast_std_dev_upper.iloc[:, 0].to_list()))
-                fixed_std_dev_upper_value = fixed_std_dev_upper_value.tolist()
-
-                fixed_dates.append(fixed_date)
-                fixed_mean_values.append(fixed_mean_value)
-                fixed_max_values.append(fixed_max_value)
-                fixed_min_values.append(fixed_min_value)
-                fixed_std_dev_lower_values.append(fixed_std_dev_lower_value)
-                fixed_std_dev_upper_values.append(fixed_std_dev_upper_value)
-
-            fixed_dates = reduce(lambda x, y: x + y, fixed_dates)
-            fixed_mean_values = reduce(lambda x, y: x + y, fixed_mean_values)
-            fixed_max_values = reduce(lambda x, y: x + y, fixed_max_values)
-            fixed_min_values = reduce(lambda x, y: x + y, fixed_min_values)
-            fixed_std_dev_lower_values = reduce(lambda x, y: x + y, fixed_std_dev_lower_values)
-            fixed_std_dev_upper_values = reduce(lambda x, y: x + y, fixed_std_dev_upper_values)
-
-        if (high_res_forecast.index[0].month == high_res_forecast.index[len(high_res_forecast.index) - 1].month):
-            iniDate = high_res_forecast.index[0]
-            monIdx = iniDate.month
-
-            data_forecast_high_res = high_res_forecast[high_res_forecast.index.month == int(monIdx)]
-
-            # filter historic data to only be current month
-            monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-            # filter the observations to current month
-            monObs = observed_df[observed_df.index.month.isin([monIdx])]
-
-            # get maximum value to bound histogram
-            obs_tempMax = np.max(monObs.max())
-            sim_tempMax = np.max(monData.max())
-            obs_tempMin = np.min(monObs.min())
-            sim_tempMin = np.min(monData.min())
-
-            obs_maxVal = math.ceil(obs_tempMax)
-            sim_maxVal = math.ceil(sim_tempMax)
-            obs_minVal = math.floor(obs_tempMin)
-            sim_minVal = math.floor(sim_tempMin)
-
-            n_elementos_obs = len(monObs.iloc[:, 0].values)
-            n_elementos_sim = len(monData.iloc[:, 0].values)
-
-            n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-            n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-            # specify the bin width for histogram (in m3/s)
-            step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-            step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-            # specify histogram bins
-            bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-            bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
-
-            # get the histograms
-            sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-            obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-            # adjust the bins to be the center
-            bin_edges_sim = bin_edges_sim[1:]
-            bin_edges_obs = bin_edges_obs[1:]
-
-            # normalize the histograms
-            sim_counts = sim_counts.astype(float) / monData.size
-            obs_counts = obs_counts.astype(float) / monObs.size
-
-            # calculate the cdfs
-            simcdf = np.cumsum(sim_counts)
-            obscdf = np.cumsum(obs_counts)
-
-            # interpolated function to convert simulated streamflow to prob
-            f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
-
-            # interpolated function to convert simulated prob to observed streamflow
-            backout = interpolate.interp1d(obscdf, bin_edges_obs)
-
-            fixed_dates_high_res = data_forecast_high_res.index.to_list()
-            fixed_high_res_values = backout(f(data_forecast_high_res.iloc[:, 0].to_list()))
-            fixed_high_res_values = fixed_high_res_values.tolist()
-
-        else:
-
-            iniDate = high_res_forecast.index[0]
-            iniMonth = iniDate.month
-            endDate = high_res_forecast.index[len(high_res_forecast.index) - 1]
-            endMonth = endDate.month
-
-            months = [iniMonth, endMonth]
-
-            fixed_dates_high_res = []
-            fixed_high_res_values = []
-
-            for month in months:
-                data_forecast_high_res = high_res_forecast[high_res_forecast.index.month == int(month)]
-
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([month])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([month])]
-
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
-
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
-
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
-
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
-
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
-
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
-
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
-
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
-
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
-
-                fixed_date_high_res = high_res_forecast.index.to_list()
-                fixed_high_res_value = backout(f(high_res_forecast.iloc[:, 0].to_list()))
-                fixed_high_res_value = fixed_high_res_value.tolist()
-
-                fixed_dates_high_res.append(fixed_date)
-                fixed_high_res_values.append(fixed_mean_value)
-
-            fixed_dates_high_res = reduce(lambda x, y: x + y, fixed_dates_high_res)
-            fixed_high_res_values = reduce(lambda x, y: x + y, fixed_high_res_values)
+        iniDate = mean_forecast.index[0]
+        monIdx = iniDate.month
+
+        # filter historic data to only be current month
+        monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+        # filter the observations to current month
+        monObs = observed_df[observed_df.index.month.isin([monIdx])]
+
+        # get maximum value to bound histogram
+        obs_tempMax = np.max(monObs.max())
+        sim_tempMax = np.max(monData.max())
+        obs_tempMin = np.min(monObs.min())
+        sim_tempMin = np.min(monData.min())
+
+        obs_maxVal = math.ceil(obs_tempMax)
+        sim_maxVal = math.ceil(sim_tempMax)
+        obs_minVal = math.floor(obs_tempMin)
+        sim_minVal = math.floor(sim_tempMin)
+
+        n_elementos_obs = len(monObs.iloc[:, 0].values)
+        n_elementos_sim = len(monData.iloc[:, 0].values)
+
+        n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+        n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+
+        # specify the bin width for histogram (in m3/s)
+        step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+        step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+
+        # specify histogram bins
+        bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
+        bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+
+        # get the histograms
+        sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+        obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+
+        # adjust the bins to be the center
+        bin_edges_sim = bin_edges_sim[1:]
+        bin_edges_obs = bin_edges_obs[1:]
+
+        # normalize the histograms
+        sim_counts = sim_counts.astype(float) / monData.size
+        obs_counts = obs_counts.astype(float) / monObs.size
+
+        # calculate the cdfs
+        simcdf = np.cumsum(sim_counts)
+        obscdf = np.cumsum(obs_counts)
+
+        # interpolated function to convert simulated streamflow to prob
+        f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
+
+        # interpolated function to convert simulated prob to observed streamflow
+        backout = interpolate.interp1d(obscdf, bin_edges_obs)
+
+        # Fixing the forecast
+        fixed_dates = mean_forecast.index.to_list()
+        fixed_mean_values = backout(f(mean_forecast.iloc[:, 0].to_list()))
+        fixed_mean_values = fixed_mean_values.tolist()
+        fixed_max_values = backout(f(max_forecast.iloc[:, 0].to_list()))
+        fixed_max_values = fixed_max_values.tolist()
+        fixed_min_values = backout(f(min_forecast.iloc[:, 0].to_list()))
+        fixed_min_values = fixed_min_values.tolist()
+        fixed_std_dev_lower_values = backout(f(std_dev_lower_forecast.iloc[:, 0].to_list()))
+        fixed_std_dev_lower_values = fixed_std_dev_lower_values.tolist()
+        fixed_std_dev_upper_values = backout(f(std_dev_upper_forecast.iloc[:, 0].to_list()))
+        fixed_std_dev_upper_values = fixed_std_dev_upper_values.tolist()
+
+        # Fixing the high-res forecast
+        fixed_dates_high_res = high_res_forecast.index.to_list()
+        fixed_high_res_values = backout(f(high_res_forecast.iloc[:, 0].to_list()))
+        fixed_high_res_values = fixed_high_res_values.tolist()
 
         pairs = [list(a) for a in zip(fixed_dates, fixed_mean_values)]
         mean_forecast = pd.DataFrame(pairs, columns=['Datetime', 'mean (m3/s)'])
@@ -3669,7 +3186,7 @@ def get_forecast_bc_data_csv(request):
         corrected_forecast_df = pd.concat([mean_forecast, max_forecast, mean_forecast, min_forecast, std_dev_lower_forecast, std_dev_upper_forecast, high_res_forecast], axis=1)
 
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=streamflow_forecast_{0}_{1}_{2}_{3}.csv'.format(watershed, subbasin, comid, init_time)
+        response['Content-Disposition'] = 'attachment; filename=corrected_streamflow_forecast_{0}_{1}_{2}_{3}.csv'.format(watershed, subbasin, comid, init_time)
         corrected_forecast_df.to_csv(encoding='utf-8', header=True, path_or_buf=response)
 
         return response
