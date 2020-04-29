@@ -125,6 +125,10 @@ function get_discharge_info (stationcode, stationname) {
 
                 //resize main graph
                 Plotly.Plots.resize($("#observed-chart-Q .js-plotly-plot")[0]);
+                Plotly.relayout($("#observed-chart-Q .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
                 var params = {
                     stationcode: stationcode,
@@ -185,6 +189,10 @@ function get_simulated_data (watershed, subbasin, streamcomid, stationcode, stat
 
                 //resize main graph
                 Plotly.Plots.resize($("#simulated-chart-Q .js-plotly-plot")[0]);
+                Plotly.relayout($("#simulated-chart-Q .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
                 var params = {
                     watershed: watershed,
@@ -247,6 +255,10 @@ function get_simulated_bc_data (watershed, subbasin, streamcomid, stationcode, s
 
                 //resize main graph
                 Plotly.Plots.resize($("#simulated-bc-chart-Q .js-plotly-plot")[0]);
+                Plotly.relayout($("#simulated-bc-chart-Q .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
                 var params = {
                     watershed: watershed,
@@ -309,6 +321,10 @@ function get_hydrographs (watershed, subbasin, streamcomid, stationcode, station
 
                 //resize main graph
                 Plotly.Plots.resize($("#hydrographs-chart .js-plotly-plot")[0]);
+                Plotly.relayout($("#hydrographs-chart .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
            		 } else if (data.error) {
            		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
@@ -356,6 +372,10 @@ function get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stati
 
                 //resize main graph
                 Plotly.Plots.resize($("#dailyAverages-chart .js-plotly-plot")[0]);
+                Plotly.relayout($("#dailyAverages-chart .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
            		 } else if (data.error) {
            		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
@@ -403,6 +423,10 @@ function get_monthlyAverages (watershed, subbasin, streamcomid, stationcode, sta
 
                 //resize main graph
                 Plotly.Plots.resize($("#monthlyAverages-chart .js-plotly-plot")[0]);
+                Plotly.relayout($("#monthlyAverages-chart .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
            		 } else if (data.error) {
            		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
@@ -450,6 +474,10 @@ function get_scatterPlot (watershed, subbasin, streamcomid, stationcode, station
 
                 //resize main graph
                 Plotly.Plots.resize($("#scatterPlot-chart .js-plotly-plot")[0]);
+                Plotly.relayout($("#scatterPlot-chart .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
            		 } else if (data.error) {
            		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
@@ -497,6 +525,10 @@ function get_scatterPlotLogScale (watershed, subbasin, streamcomid, stationcode,
 
                 //resize main graph
                 Plotly.Plots.resize($("#scatterPlotLogScale-chart .js-plotly-plot")[0]);
+                Plotly.relayout($("#scatterPlotLogScale-chart .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
            		 } else if (data.error) {
            		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
@@ -544,6 +576,10 @@ function get_volumeAnalysis (watershed, subbasin, streamcomid, stationcode, stat
 
                 //resize main graph
                 Plotly.Plots.resize($("#volumeAnalysis-chart .js-plotly-plot")[0]);
+                Plotly.relayout($("#volumeAnalysis-chart .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
            		 } else if (data.error) {
            		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
@@ -703,38 +739,82 @@ function map_events() {
 function resize_graphs() {
     $("#observedQ_tab_link").click(function() {
         Plotly.Plots.resize($("#observed-chart-Q .js-plotly-plot")[0]);
+        Plotly.relayout($("#observed-chart-Q .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
     $("#simulatedQ_tab_link").click(function() {
     	if (m_downloaded_historical_streamflow) {
     		Plotly.Plots.resize($("#simulated-chart-Q .js-plotly-plot")[0]);
+    		Plotly.relayout($("#simulated-chart-Q .js-plotly-plot")[0], {
+        		'xaxis.autorange': true,
+        		'yaxis.autorange': true
+        	});
     	}
     });
     $("#simulated_bc_Q_tab_link").click(function() {
     	Plotly.Plots.resize($("#simulated-bc-chart-Q .js-plotly-plot")[0]);
+    	Plotly.relayout($("#simulated-bc-chart-Q .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
     $("#hydrographs_tab_link").click(function() {
     	Plotly.Plots.resize($("#hydrographs-chart .js-plotly-plot")[0]);
+    	Plotly.relayout($("#hydrographs-chart .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
     $("#dailyAverages_tab_link").click(function() {
     	Plotly.Plots.resize($("#dailyAverages-chart .js-plotly-plot")[0]);
+    	Plotly.relayout($("#dailyAverages-chart .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
     $("#monthlyAverages_tab_link").click(function() {
     	Plotly.Plots.resize($("#monthlyAverages-chart .js-plotly-plot")[0]);
+    	Plotly.relayout($("#monthlyAverages-chart .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
     $("#scatterPlot_tab_link").click(function() {
     	Plotly.Plots.resize($("#scatterPlot-chart .js-plotly-plot")[0]);
+    	Plotly.relayout($("#scatterPlot-chart .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
     $("#scatterPlotLogScale_tab_link").click(function() {
     	Plotly.Plots.resize($("#scatterPlotLogScale-chart .js-plotly-plot")[0]);
+    	Plotly.relayout($("#scatterPlotLogScale-chart .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
     $("#volumeAnalysis_tab_link").click(function() {
     	Plotly.Plots.resize($("#volumeAnalysis-chart .js-plotly-plot")[0]);
+    	Plotly.relayout($("#volumeAnalysis-chart .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
     $("#forecast_tab_link").click(function() {
         Plotly.Plots.resize($("#forecast-chart .js-plotly-plot")[0]);
+        Plotly.relayout($("#forecast-chart .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
     $("#forecast_bc_tab_link").click(function() {
         Plotly.Plots.resize($("#forecast-bc-chart .js-plotly-plot")[0]);
+        Plotly.relayout($("#forecast-bc-chart .js-plotly-plot")[0], {
+        	'xaxis.autorange': true,
+        	'yaxis.autorange': true
+        });
     });
 };
 
@@ -1073,6 +1153,10 @@ function get_time_series(watershed, subbasin, streamcomid, startdate) {
 
                 //resize main graph
                 Plotly.Plots.resize($("#forecast-chart .js-plotly-plot")[0]);
+                Plotly.relayout($("#forecast-chart .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
                 var params = {
                     watershed: watershed,
@@ -1135,6 +1219,10 @@ function get_time_series_bc(watershed, subbasin, streamcomid, startdate, station
 
                 //resize main graph
                 Plotly.Plots.resize($("#forecast-bc-chart .js-plotly-plot")[0]);
+                Plotly.relayout($("#forecast-bc-chart .js-plotly-plot")[0], {
+                	'xaxis.autorange': true,
+                	'yaxis.autorange': true
+                });
 
                 var params = {
                     watershed: watershed,

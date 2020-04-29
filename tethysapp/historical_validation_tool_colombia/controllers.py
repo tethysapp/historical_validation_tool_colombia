@@ -23,3174 +23,3457 @@ from csv import writer as csv_writer
 
 
 def home(request):
-    """
+	"""
     Controller for the app home page.
     """
 
-    # List of Metrics to include in context
-    metric_loop_list = list(zip(metric_names, metric_abbr))
+	# List of Metrics to include in context
+	metric_loop_list = list(zip(metric_names, metric_abbr))
 
-    context = {
-        "metric_loop_list": metric_loop_list
-    }
+	context = {
+		"metric_loop_list": metric_loop_list
+	}
 
-    return render(request, 'historical_validation_tool_colombia/home.html', context)
+	return render(request, 'historical_validation_tool_colombia/home.html', context)
 
 
 def get_discharge_data(request):
-    """
+	"""
     Get observed data from csv files in Hydroshare
     """
 
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
+	try:
 
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents' \
-              '/Discharge_Data/{0}.csv'.format(codEstacion)
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        s = requests.get(url, verify=False).content
+		s = requests.get(url, verify=False).content
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        observed_Q = go.Scatter(
-            x=datesDischarge,
-            y=dataDischarge,
-            name='Observed Discharge',
-        )
+		observed_Q = go.Scatter(
+			x=datesDischarge,
+			y=dataDischarge,
+			name='Observed Discharge',
+			line=dict(color='#636efa')
+		)
 
-        layout = go.Layout(title='Observed Streamflow {0}-{1}'.format(nomEstacion, codEstacion),
-                           xaxis=dict(title='Dates', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)',
-                                                                   autorange=True), showlegend=False)
+		layout = go.Layout(title='Observed Streamflow {0}-{1}'.format(nomEstacion, codEstacion),
+		                   xaxis=dict(title='Dates', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)',
+		                                                           autorange=True), showlegend=False)
 
-        chart_obj = PlotlyView(go.Figure(data=[observed_Q], layout=layout))
+		chart_obj = PlotlyView(go.Figure(data=[observed_Q], layout=layout))
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		context = {
+			'gizmo_object': chart_obj,
+		}
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No observed data found for the selected station.'})
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No observed data found for the selected station.'})
 
 
 def get_simulated_data(request):
-    """
+	"""
     Get simulated data from api
     """
 
-    try:
-        get_data = request.GET
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		get_data = request.GET
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        # ----------------------------------------------
-        # Chart Section
-        # ----------------------------------------------
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        simulated_Q = go.Scatter(
-            name='Simulated Discharge',
-            x=era_dates,
-            y=era_values,
-        )
+		# ----------------------------------------------
+		# Chart Section
+		# ----------------------------------------------
 
-        layout = go.Layout(
-            title="Simulated Streamflow at <br> {0}".format(nomEstacion),
-            xaxis=dict(title='Date', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)'),
-        )
+		simulated_Q = go.Scatter(
+			name='Simulated Discharge',
+			x=era_dates,
+			y=era_values,
+			line=dict(color='#ef553b')
+		)
 
-        chart_obj = PlotlyView(go.Figure(data=[simulated_Q], layout=layout))
+		layout = go.Layout(
+			title="Simulated Streamflow at <br> {0}".format(nomEstacion),
+			xaxis=dict(title='Date', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)'),
+		)
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		chart_obj = PlotlyView(go.Figure(data=[simulated_Q], layout=layout))
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		context = {
+			'gizmo_object': chart_obj,
+		}
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No simulated data found for the selected station.'})
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No simulated data found for the selected station.'})
+
 
 def get_simulated_bc_data(request):
-    """
+	"""
     Calculate corrected simulated data
     """
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        '''Get Observed Data'''
+		'''Get Observed Data'''
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        s = requests.get(url, verify=False).content
+		s = requests.get(url, verify=False).content
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        '''Correct the Bias in Sumulation'''
+		'''Correct the Bias in Sumulation'''
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        dates = []
-        values = []
+		dates = []
+		values = []
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				dates.append(date)
+				values.append(value)
 
-        # ----------------------------------------------
-        # Chart Section
-        # ----------------------------------------------
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        corrected_Q = go.Scatter(
-            name='Corrected Simulated Discharge',
-            x=dates,
-            y=values,
-        )
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        layout = go.Layout(
-            title="Corrected Simulated Streamflow at <br> {0}".format(nomEstacion),
-            xaxis=dict(title='Date', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)'),
-        )
+		# ----------------------------------------------
+		# Chart Section
+		# ----------------------------------------------
 
-        chart_obj = PlotlyView(go.Figure(data=[corrected_Q], layout=layout))
+		corrected_Q = go.Scatter(
+			name='Corrected Simulated Discharge',
+			x=dates,
+			y=values,
+			line=dict(color='#00cc96')
+		)
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		layout = go.Layout(
+			title="Corrected Simulated Streamflow at <br> {0}".format(nomEstacion),
+			xaxis=dict(title='Date', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)'),
+		)
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		chart_obj = PlotlyView(go.Figure(data=[corrected_Q], layout=layout))
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No simulated data found for the selected station.'})
+		context = {
+			'gizmo_object': chart_obj,
+		}
+
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No simulated data found for the selected station.'})
 
 
 def get_hydrographs(request):
-    """
+	"""
     Get observed data from csv files in Hydroshare
     Get historic simulations from ERA Interim
     """
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
+		'''Get Simulated Data'''
 
-        '''Get Simulated Data'''
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_dates = []
+		era_values = []
 
-        era_dates = []
-        era_values = []
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
+		'''Get Observed Data'''
 
-        '''Get Observed Data'''
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		s = requests.get(url, verify=False).content
 
-        s = requests.get(url, verify=False).content
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		'''Correct the Bias in Sumulation'''
 
-        '''Correct the Bias in Sumulation'''
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		dates = []
+		values = []
 
-        dates = []
-        values = []
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-                dates.append(date)
-                values.append(value)
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				dates.append(date)
+				values.append(value)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        '''Merge Data'''
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
+		'''Merge Data'''
 
-        merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
+		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
+		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
-        '''Plotting Data'''
+		'''Plotting Data'''
 
-        observed_Q = go.Scatter(x=merged_df.index, y=merged_df.iloc[:, 1].values, name='Observed', )
+		observed_Q = go.Scatter(x=merged_df.index, y=merged_df.iloc[:, 1].values, name='Observed', )
 
-        simulated_Q = go.Scatter(x=merged_df.index, y=merged_df.iloc[:, 0].values, name='Simulated', )
+		simulated_Q = go.Scatter(x=merged_df.index, y=merged_df.iloc[:, 0].values, name='Simulated', )
 
-        corrected_Q = go.Scatter(x=merged_df2.index, y=merged_df2.iloc[:, 0].values, name='Corrected Simulated', )
+		corrected_Q = go.Scatter(x=merged_df2.index, y=merged_df2.iloc[:, 0].values, name='Corrected Simulated', )
 
-        layout = go.Layout(
-            title='Observed & Simulated Streamflow at <br> {0} - {1}'.format(codEstacion, nomEstacion),
-            xaxis=dict(title='Dates', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)', autorange=True),
-            showlegend=True)
+		layout = go.Layout(
+			title='Observed & Simulated Streamflow at <br> {0} - {1}'.format(codEstacion, nomEstacion),
+			xaxis=dict(title='Dates', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)', autorange=True),
+			showlegend=True)
 
-        chart_obj = PlotlyView(go.Figure(data=[observed_Q, simulated_Q, corrected_Q], layout=layout))
+		chart_obj = PlotlyView(go.Figure(data=[observed_Q, simulated_Q, corrected_Q], layout=layout))
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		context = {
+			'gizmo_object': chart_obj,
+		}
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No data found for the selected station.'})
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No data found for the selected station.'})
 
 
 def get_dailyAverages(request):
-    """
+	"""
     Get observed data from csv files in Hydroshare
     Get historic simulations from ERA Interim
     """
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Correct the Bias in Sumulation'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		'''Correct the Bias in Sumulation'''
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        dates = []
-        values = []
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		dates = []
+		values = []
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        '''Merge Data'''
+				dates.append(date)
+				values.append(value)
 
-        merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        '''Plotting Data'''
+		'''Merge Data'''
 
-        daily_avg = hd.daily_average(merged_df)
+		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
-        daily_avg2 = hd.daily_average(merged_df2)
+		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
-        daily_avg_obs_Q = go.Scatter(x=daily_avg.index, y=daily_avg.iloc[:, 1].values, name='Observed', )
+		'''Plotting Data'''
 
-        daily_avg_sim_Q = go.Scatter(x=daily_avg.index, y=daily_avg.iloc[:, 0].values, name='Simulated', )
+		daily_avg = hd.daily_average(merged_df)
 
-        daily_avg_corr_sim_Q = go.Scatter(x=daily_avg2.index, y=daily_avg2.iloc[:, 0].values, name='Corrected Simulated', )
+		daily_avg2 = hd.daily_average(merged_df2)
 
-        layout = go.Layout(
-            title='Daily Average Streamflow for <br> {0} - {1}'.format(codEstacion, nomEstacion),
-            xaxis=dict(title='Days', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)', autorange=True),
-            showlegend=True)
+		daily_avg_obs_Q = go.Scatter(x=daily_avg.index, y=daily_avg.iloc[:, 1].values, name='Observed', )
 
-        chart_obj = PlotlyView(go.Figure(data=[daily_avg_obs_Q, daily_avg_sim_Q, daily_avg_corr_sim_Q], layout=layout))
+		daily_avg_sim_Q = go.Scatter(x=daily_avg.index, y=daily_avg.iloc[:, 0].values, name='Simulated', )
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		daily_avg_corr_sim_Q = go.Scatter(x=daily_avg2.index, y=daily_avg2.iloc[:, 0].values,
+		                                  name='Corrected Simulated', )
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		layout = go.Layout(
+			title='Daily Average Streamflow for <br> {0} - {1}'.format(codEstacion, nomEstacion),
+			xaxis=dict(title='Days', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)', autorange=True),
+			showlegend=True)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No data found for the selected station.'})
+		chart_obj = PlotlyView(go.Figure(data=[daily_avg_obs_Q, daily_avg_sim_Q, daily_avg_corr_sim_Q], layout=layout))
+
+		context = {
+			'gizmo_object': chart_obj,
+		}
+
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No data found for the selected station.'})
 
 
 def get_monthlyAverages(request):
-    """
+	"""
     Get observed data from csv files in Hydroshare
     Get historic simulations from ERA Interim
     """
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Correct the Bias in Sumulation'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		'''Correct the Bias in Sumulation'''
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        dates = []
-        values = []
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		dates = []
+		values = []
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        '''Merge Data'''
+				dates.append(date)
+				values.append(value)
 
-        merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        '''Plotting Data'''
+		'''Merge Data'''
 
-        monthly_avg = hd.monthly_average(merged_df)
+		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
-        monthly_avg2 = hd.monthly_average(merged_df2)
+		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
-        monthly_avg_obs_Q = go.Scatter(x=monthly_avg.index, y=monthly_avg.iloc[:, 1].values, name='Observed', )
+		'''Plotting Data'''
 
-        monthly_avg_sim_Q = go.Scatter(x=monthly_avg.index, y=monthly_avg.iloc[:, 0].values, name='Simulated', )
+		monthly_avg = hd.monthly_average(merged_df)
 
-        monthly_avg_corr_sim_Q = go.Scatter(x=monthly_avg2.index, y=monthly_avg2.iloc[:, 0].values, name='Corrected Simulated', )
+		monthly_avg2 = hd.monthly_average(merged_df2)
 
-        layout = go.Layout(
-            title='Monthly Average Streamflow for <br> {0} - {1}'.format(codEstacion, nomEstacion),
-            xaxis=dict(title='Months', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)', autorange=True),
-            showlegend=True)
+		monthly_avg_obs_Q = go.Scatter(x=monthly_avg.index, y=monthly_avg.iloc[:, 1].values, name='Observed', )
 
-        chart_obj = PlotlyView(go.Figure(data=[monthly_avg_obs_Q, monthly_avg_sim_Q, monthly_avg_corr_sim_Q], layout=layout))
+		monthly_avg_sim_Q = go.Scatter(x=monthly_avg.index, y=monthly_avg.iloc[:, 0].values, name='Simulated', )
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		monthly_avg_corr_sim_Q = go.Scatter(x=monthly_avg2.index, y=monthly_avg2.iloc[:, 0].values,
+		                                    name='Corrected Simulated', )
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		layout = go.Layout(
+			title='Monthly Average Streamflow for <br> {0} - {1}'.format(codEstacion, nomEstacion),
+			xaxis=dict(title='Months', ), yaxis=dict(title='Discharge (m<sup>3</sup>/s)', autorange=True),
+			showlegend=True)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No data found for the selected station.'})
+		chart_obj = PlotlyView(
+			go.Figure(data=[monthly_avg_obs_Q, monthly_avg_sim_Q, monthly_avg_corr_sim_Q], layout=layout))
+
+		context = {
+			'gizmo_object': chart_obj,
+		}
+
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No data found for the selected station.'})
 
 
 def get_scatterPlot(request):
-    """
+	"""
     Get observed data from csv files in Hydroshare
     Get historic simulations from ERA Interim
     """
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Correct the Bias in Sumulation'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		'''Correct the Bias in Sumulation'''
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        dates = []
-        values = []
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		dates = []
+		values = []
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        '''Merge Data'''
+				dates.append(date)
+				values.append(value)
 
-        merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        '''Plotting Data'''
+		'''Merge Data'''
 
-        scatter_data = go.Scatter(
-            x=merged_df.iloc[:, 0].values,
-            y=merged_df.iloc[:, 1].values,
-            mode='markers',
-            name='original'
-        )
+		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
-        scatter_data2 = go.Scatter(
-            x=merged_df2.iloc[:, 0].values,
-            y=merged_df2.iloc[:, 1].values,
-            mode='markers',
-            name='corrected'
-        )
+		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
-        min_value = min(min(merged_df.iloc[:, 1].values), min(merged_df.iloc[:, 0].values))
-        max_value = max(max(merged_df.iloc[:, 1].values), max(merged_df.iloc[:, 0].values))
+		'''Plotting Data'''
 
-        min_value2 = min(min(merged_df2.iloc[:, 1].values), min(merged_df2.iloc[:, 0].values))
-        max_value2 = max(max(merged_df2.iloc[:, 1].values), max(merged_df2.iloc[:, 0].values))
+		scatter_data = go.Scatter(
+			x=merged_df.iloc[:, 0].values,
+			y=merged_df.iloc[:, 1].values,
+			mode='markers',
+			name='original',
+			marker=dict(color='#ef553b')
+		)
 
-        line_45 = go.Scatter(
-            x=[min_value, max_value],
-            y=[min_value, max_value],
-            mode='lines',
-            name='45deg line'
-        )
+		scatter_data2 = go.Scatter(
+			x=merged_df2.iloc[:, 0].values,
+			y=merged_df2.iloc[:, 1].values,
+			mode='markers',
+			name='corrected',
+			marker=dict(color='#00cc96')
+		)
 
-        slope, intercept, r_value, p_value, std_err = sp.linregress(merged_df.iloc[:, 0].values,
-                                                                    merged_df.iloc[:, 1].values)
+		min_value = min(min(merged_df.iloc[:, 1].values), min(merged_df.iloc[:, 0].values))
+		max_value = max(max(merged_df.iloc[:, 1].values), max(merged_df.iloc[:, 0].values))
 
-        slope2, intercept2, r_value2, p_value2, std_err2 = sp.linregress(merged_df2.iloc[:, 0].values,
-                                                                    merged_df2.iloc[:, 1].values)
+		min_value2 = min(min(merged_df2.iloc[:, 1].values), min(merged_df2.iloc[:, 0].values))
+		max_value2 = max(max(merged_df2.iloc[:, 1].values), max(merged_df2.iloc[:, 0].values))
 
-        line_adjusted = go.Scatter(
-            x=[min_value, max_value],
-            y=[slope * min_value + intercept, slope * max_value + intercept],
-            mode='lines',
-            name='{0}x + {1} (Original)'.format(str(round(slope, 2)), str(round(intercept, 2)))
-        )
+		line_45 = go.Scatter(
+			x=[min_value, max_value],
+			y=[min_value, max_value],
+			mode='lines',
+			name='45deg line',
+			line=dict(color='black')
+		)
 
-        line_adjusted2 = go.Scatter(
-            x=[min_value, max_value],
-            y=[slope2 * min_value2 + intercept2, slope2 * max_value2 + intercept2],
-            mode='lines',
-            name='{0}x + {1} (Corrected)'.format(str(round(slope2, 2)), str(round(intercept2, 2)))
-        )
+		slope, intercept, r_value, p_value, std_err = sp.linregress(merged_df.iloc[:, 0].values,
+		                                                            merged_df.iloc[:, 1].values)
 
-        layout = go.Layout(title="Scatter Plot for {0} - {1}".format(codEstacion, nomEstacion),
-                           xaxis=dict(title='Simulated', ), yaxis=dict(title='Observed', autorange=True),
-                           showlegend=True)
+		slope2, intercept2, r_value2, p_value2, std_err2 = sp.linregress(merged_df2.iloc[:, 0].values,
+		                                                                 merged_df2.iloc[:, 1].values)
 
-        chart_obj = PlotlyView(go.Figure(data=[scatter_data, scatter_data2, line_45, line_adjusted, line_adjusted2], layout=layout))
+		line_adjusted = go.Scatter(
+			x=[min_value, max_value],
+			y=[slope * min_value + intercept, slope * max_value + intercept],
+			mode='lines',
+			name='{0}x + {1} (Original)'.format(str(round(slope, 2)), str(round(intercept, 2))),
+			line=dict(color='red')
+		)
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		line_adjusted2 = go.Scatter(
+			x=[min_value, max_value],
+			y=[slope2 * min_value + intercept2, slope2 * max_value + intercept2],
+			mode='lines',
+			name='{0}x + {1} (Corrected)'.format(str(round(slope2, 2)), str(round(intercept2, 2))),
+			line=dict(color='green')
+		)
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		layout = go.Layout(title="Scatter Plot for {0} - {1}".format(codEstacion, nomEstacion),
+		                   xaxis=dict(title='Simulated', ), yaxis=dict(title='Observed', autorange=True),
+		                   showlegend=True)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No data found for the selected station.'})
+		chart_obj = PlotlyView(
+			go.Figure(data=[scatter_data, scatter_data2, line_45, line_adjusted, line_adjusted2], layout=layout))
+
+		context = {
+			'gizmo_object': chart_obj,
+		}
+
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No data found for the selected station.'})
 
 
 def get_scatterPlotLogScale(request):
-    """
+	"""
     Get observed data from csv files in Hydroshare
     Get historic simulations from ERA Interim
     """
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Correct the Bias in Sumulation'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		'''Correct the Bias in Sumulation'''
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        dates = []
-        values = []
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		dates = []
+		values = []
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        '''Merge Data'''
+				dates.append(date)
+				values.append(value)
 
-        merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        '''Plotting Data'''
+		'''Merge Data'''
 
-        scatter_data = go.Scatter(
-            x=merged_df.iloc[:, 0].values,
-            y=merged_df.iloc[:, 1].values,
-            mode='markers',
-            name='original'
-        )
+		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
-        scatter_data2 = go.Scatter(
-            x=merged_df2.iloc[:, 0].values,
-            y=merged_df2.iloc[:, 1].values,
-            mode='markers',
-            name='corrected'
-        )
+		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
-        min_value = min(min(merged_df.iloc[:, 1].values), min(merged_df.iloc[:, 0].values))
-        max_value = max(max(merged_df.iloc[:, 1].values), max(merged_df.iloc[:, 0].values))
+		'''Plotting Data'''
 
-        line_45 = go.Scatter(
-            x=[min_value, max_value],
-            y=[min_value, max_value],
-            mode='lines',
-            name='45deg line'
-        )
+		scatter_data = go.Scatter(
+			x=merged_df.iloc[:, 0].values,
+			y=merged_df.iloc[:, 1].values,
+			mode='markers',
+			name='original',
+			marker=dict(color='#ef553b')
+		)
 
-        layout = go.Layout(title="Scatter Plot for {0} - {1} (Log Scale)".format(codEstacion, nomEstacion),
-                           xaxis=dict(title='Simulated', type='log', ), yaxis=dict(title='Observed', type='log',
-                                                                                   autorange=True), showlegend=True)
+		scatter_data2 = go.Scatter(
+			x=merged_df2.iloc[:, 0].values,
+			y=merged_df2.iloc[:, 1].values,
+			mode='markers',
+			name='corrected',
+			marker=dict(color='#00cc96')
+		)
 
-        chart_obj = PlotlyView(go.Figure(data=[scatter_data, scatter_data2, line_45], layout=layout))
+		min_value = min(min(merged_df.iloc[:, 1].values), min(merged_df.iloc[:, 0].values))
+		max_value = max(max(merged_df.iloc[:, 1].values), max(merged_df.iloc[:, 0].values))
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		line_45 = go.Scatter(
+			x=[min_value, max_value],
+			y=[min_value, max_value],
+			mode='lines',
+			name='45deg line',
+			line=dict(color='black')
+		)
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		layout = go.Layout(title="Scatter Plot for {0} - {1} (Log Scale)".format(codEstacion, nomEstacion),
+		                   xaxis=dict(title='Simulated', type='log', ), yaxis=dict(title='Observed', type='log',
+		                                                                           autorange=True), showlegend=True)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No data found for the selected station.'})
+		chart_obj = PlotlyView(go.Figure(data=[scatter_data, scatter_data2, line_45], layout=layout))
+
+		context = {
+			'gizmo_object': chart_obj,
+		}
+
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No data found for the selected station.'})
 
 
 def get_volumeAnalysis(request):
-    """
+	"""
     Get observed data from csv files in Hydroshare
     Get historic simulations from ERA Interim
     """
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Correct the Bias in Sumulation'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		'''Correct the Bias in Sumulation'''
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        dates = []
-        values = []
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		dates = []
+		values = []
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        '''Merge Data'''
+				dates.append(date)
+				values.append(value)
 
-        merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        '''Plotting Data'''
+		'''Merge Data'''
 
-        sim_array = merged_df.iloc[:, 0].values
-        obs_array = merged_df.iloc[:, 1].values
-        corr_array = merged_df2.iloc[:, 0].values
+		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
-        sim_volume_dt = sim_array * 0.0864
-        obs_volume_dt = obs_array * 0.0864
-        corr_volume_dt = corr_array * 0.0864
+		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
-        sim_volume_cum = []
-        obs_volume_cum = []
-        corr_volume_cum = []
-        sum_sim = 0
-        sum_obs = 0
-        sum_corr = 0
+		'''Plotting Data'''
 
-        for i in sim_volume_dt:
-            sum_sim = sum_sim + i
-            sim_volume_cum.append(sum_sim)
+		sim_array = merged_df.iloc[:, 0].values
+		obs_array = merged_df.iloc[:, 1].values
+		corr_array = merged_df2.iloc[:, 0].values
 
-        for j in obs_volume_dt:
-            sum_obs = sum_obs + j
-            obs_volume_cum.append(sum_obs)
+		sim_volume_dt = sim_array * 0.0864
+		obs_volume_dt = obs_array * 0.0864
+		corr_volume_dt = corr_array * 0.0864
 
-        for k in corr_volume_dt:
-            sum_corr = sum_corr + k
-            corr_volume_cum.append(sum_corr)
+		sim_volume_cum = []
+		obs_volume_cum = []
+		corr_volume_cum = []
+		sum_sim = 0
+		sum_obs = 0
+		sum_corr = 0
 
-        observed_volume = go.Scatter(x=merged_df.index, y=obs_volume_cum, name='Observed', )
+		for i in sim_volume_dt:
+			sum_sim = sum_sim + i
+			sim_volume_cum.append(sum_sim)
 
-        simulated_volume = go.Scatter(x=merged_df.index, y=sim_volume_cum, name='Simulated', )
+		for j in obs_volume_dt:
+			sum_obs = sum_obs + j
+			obs_volume_cum.append(sum_obs)
 
-        corrected_volume = go.Scatter(x=merged_df2.index, y=corr_volume_cum, name='Corrected Simulated', )
+		for k in corr_volume_dt:
+			sum_corr = sum_corr + k
+			corr_volume_cum.append(sum_corr)
 
-        layout = go.Layout(
-            title='Observed & Simulated Volume at<br> {0} - {1}'.format(codEstacion, nomEstacion),
-            xaxis=dict(title='Dates', ), yaxis=dict(title='Volume (Mm<sup>3</sup>)', autorange=True),
-            showlegend=True)
+		observed_volume = go.Scatter(x=merged_df.index, y=obs_volume_cum, name='Observed', )
 
-        chart_obj = PlotlyView(go.Figure(data=[observed_volume, simulated_volume, corrected_volume], layout=layout))
+		simulated_volume = go.Scatter(x=merged_df.index, y=sim_volume_cum, name='Simulated', )
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		corrected_volume = go.Scatter(x=merged_df2.index, y=corr_volume_cum, name='Corrected Simulated', )
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		layout = go.Layout(
+			title='Observed & Simulated Volume at<br> {0} - {1}'.format(codEstacion, nomEstacion),
+			xaxis=dict(title='Dates', ), yaxis=dict(title='Volume (Mm<sup>3</sup>)', autorange=True),
+			showlegend=True)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No data found for the selected station.'})
+		chart_obj = PlotlyView(go.Figure(data=[observed_volume, simulated_volume, corrected_volume], layout=layout))
+
+		context = {
+			'gizmo_object': chart_obj,
+		}
+
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No data found for the selected station.'})
 
 
 def volume_table_ajax(request):
-    """Calculates the volumes of the simulated and observed streamflow"""
+	"""Calculates the volumes of the simulated and observed streamflow"""
 
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Correct the Bias in Sumulation'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		'''Correct the Bias in Sumulation'''
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        dates = []
-        values = []
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		dates = []
+		values = []
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        '''Merge Data'''
+				dates.append(date)
+				values.append(value)
 
-        merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        '''Plotting Data'''
+		'''Merge Data'''
 
-        sim_array = merged_df.iloc[:, 0].values
-        obs_array = merged_df.iloc[:, 1].values
-        corr_array = merged_df2.iloc[:, 0].values
+		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
-        sim_volume = round((integrate.simps(sim_array)) * 0.0864, 3)
-        obs_volume = round((integrate.simps(obs_array)) * 0.0864, 3)
-        corr_volume = round((integrate.simps(corr_array)) * 0.0864, 3)
+		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
-        resp = {
-            "sim_volume": sim_volume,
-            "obs_volume": obs_volume,
-            "corr_volume": corr_volume,
-        }
+		'''Plotting Data'''
 
-        return JsonResponse(resp)
+		sim_array = merged_df.iloc[:, 0].values
+		obs_array = merged_df.iloc[:, 1].values
+		corr_array = merged_df2.iloc[:, 0].values
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No data found for the selected station.'})
+		sim_volume = round((integrate.simps(sim_array)) * 0.0864, 3)
+		obs_volume = round((integrate.simps(obs_array)) * 0.0864, 3)
+		corr_volume = round((integrate.simps(corr_array)) * 0.0864, 3)
+
+		resp = {
+			"sim_volume": sim_volume,
+			"obs_volume": obs_volume,
+			"corr_volume": corr_volume,
+		}
+
+		return JsonResponse(resp)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No data found for the selected station.'})
 
 
 def make_table_ajax(request):
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        # Indexing the metrics to get the abbreviations
-        selected_metric_abbr = get_data.getlist("metrics[]", None)
+		# Indexing the metrics to get the abbreviations
+		selected_metric_abbr = get_data.getlist("metrics[]", None)
 
-        # print(selected_metric_abbr)
+		# print(selected_metric_abbr)
 
-        # Retrive additional parameters if they exist
-        # Retrieving the extra optional parameters
-        extra_param_dict = {}
+		# Retrive additional parameters if they exist
+		# Retrieving the extra optional parameters
+		extra_param_dict = {}
 
-        if request.GET.get('mase_m', None) is not None:
-            mase_m = float(request.GET.get('mase_m', None))
-            extra_param_dict['mase_m'] = mase_m
-        else:
-            mase_m = 1
-            extra_param_dict['mase_m'] = mase_m
+		if request.GET.get('mase_m', None) is not None:
+			mase_m = float(request.GET.get('mase_m', None))
+			extra_param_dict['mase_m'] = mase_m
+		else:
+			mase_m = 1
+			extra_param_dict['mase_m'] = mase_m
 
-        if request.GET.get('dmod_j', None) is not None:
-            dmod_j = float(request.GET.get('dmod_j', None))
-            extra_param_dict['dmod_j'] = dmod_j
-        else:
-            dmod_j = 1
-            extra_param_dict['dmod_j'] = dmod_j
+		if request.GET.get('dmod_j', None) is not None:
+			dmod_j = float(request.GET.get('dmod_j', None))
+			extra_param_dict['dmod_j'] = dmod_j
+		else:
+			dmod_j = 1
+			extra_param_dict['dmod_j'] = dmod_j
 
-        if request.GET.get('nse_mod_j', None) is not None:
-            nse_mod_j = float(request.GET.get('nse_mod_j', None))
-            extra_param_dict['nse_mod_j'] = nse_mod_j
-        else:
-            nse_mod_j = 1
-            extra_param_dict['nse_mod_j'] = nse_mod_j
+		if request.GET.get('nse_mod_j', None) is not None:
+			nse_mod_j = float(request.GET.get('nse_mod_j', None))
+			extra_param_dict['nse_mod_j'] = nse_mod_j
+		else:
+			nse_mod_j = 1
+			extra_param_dict['nse_mod_j'] = nse_mod_j
 
-        if request.GET.get('h6_k_MHE', None) is not None:
-            h6_mhe_k = float(request.GET.get('h6_k_MHE', None))
-            extra_param_dict['h6_mhe_k'] = h6_mhe_k
-        else:
-            h6_mhe_k = 1
-            extra_param_dict['h6_mhe_k'] = h6_mhe_k
+		if request.GET.get('h6_k_MHE', None) is not None:
+			h6_mhe_k = float(request.GET.get('h6_k_MHE', None))
+			extra_param_dict['h6_mhe_k'] = h6_mhe_k
+		else:
+			h6_mhe_k = 1
+			extra_param_dict['h6_mhe_k'] = h6_mhe_k
 
-        if request.GET.get('h6_k_AHE', None) is not None:
-            h6_ahe_k = float(request.GET.get('h6_k_AHE', None))
-            extra_param_dict['h6_ahe_k'] = h6_ahe_k
-        else:
-            h6_ahe_k = 1
-            extra_param_dict['h6_ahe_k'] = h6_ahe_k
+		if request.GET.get('h6_k_AHE', None) is not None:
+			h6_ahe_k = float(request.GET.get('h6_k_AHE', None))
+			extra_param_dict['h6_ahe_k'] = h6_ahe_k
+		else:
+			h6_ahe_k = 1
+			extra_param_dict['h6_ahe_k'] = h6_ahe_k
 
-        if request.GET.get('h6_k_RMSHE', None) is not None:
-            h6_rmshe_k = float(request.GET.get('h6_k_RMSHE', None))
-            extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
-        else:
-            h6_rmshe_k = 1
-            extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
+		if request.GET.get('h6_k_RMSHE', None) is not None:
+			h6_rmshe_k = float(request.GET.get('h6_k_RMSHE', None))
+			extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
+		else:
+			h6_rmshe_k = 1
+			extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
 
-        if float(request.GET.get('lm_x_bar', None)) != 1:
-            lm_x_bar_p = float(request.GET.get('lm_x_bar', None))
-            extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
-        else:
-            lm_x_bar_p = None
-            extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
+		if float(request.GET.get('lm_x_bar', None)) != 1:
+			lm_x_bar_p = float(request.GET.get('lm_x_bar', None))
+			extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
+		else:
+			lm_x_bar_p = None
+			extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
 
-        if float(request.GET.get('d1_p_x_bar', None)) != 1:
-            d1_p_x_bar_p = float(request.GET.get('d1_p_x_bar', None))
-            extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
-        else:
-            d1_p_x_bar_p = None
-            extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
+		if float(request.GET.get('d1_p_x_bar', None)) != 1:
+			d1_p_x_bar_p = float(request.GET.get('d1_p_x_bar', None))
+			extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
+		else:
+			d1_p_x_bar_p = None
+			extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Correct the Bias in Sumulation'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		'''Correct the Bias in Sumulation'''
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        dates = []
-        values = []
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		dates = []
+		values = []
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        '''Merge Data'''
+				dates.append(date)
+				values.append(value)
 
-        merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        '''Plotting Data'''
+		'''Merge Data'''
 
-        # Creating the Table Based on User Input
-        table = hs.make_table(
-            merged_dataframe=merged_df,
-            metrics=selected_metric_abbr,
-            # remove_neg=remove_neg,
-            # remove_zero=remove_zero,
-            mase_m=extra_param_dict['mase_m'],
-            dmod_j=extra_param_dict['dmod_j'],
-            nse_mod_j=extra_param_dict['nse_mod_j'],
-            h6_mhe_k=extra_param_dict['h6_mhe_k'],
-            h6_ahe_k=extra_param_dict['h6_ahe_k'],
-            h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
-            d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
-            lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
-            # seasonal_periods=all_date_range_list
-        )
-        table_html = table.transpose()
-        table_html = table_html.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
+		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
-        # Creating the Table Based on User Input
-        table2 = hs.make_table(
-            merged_dataframe=merged_df2,
-            metrics=selected_metric_abbr,
-            # remove_neg=remove_neg,
-            # remove_zero=remove_zero,
-            mase_m=extra_param_dict['mase_m'],
-            dmod_j=extra_param_dict['dmod_j'],
-            nse_mod_j=extra_param_dict['nse_mod_j'],
-            h6_mhe_k=extra_param_dict['h6_mhe_k'],
-            h6_ahe_k=extra_param_dict['h6_ahe_k'],
-            h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
-            d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
-            lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
-            # seasonal_periods=all_date_range_list
-        )
-        table_html2 = table2.transpose()
-        table_html2 = table_html2.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
+		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
-        return HttpResponse(table_html)
+		'''Plotting Data'''
 
-    except Exception:
-        traceback.print_exc()
-        return JsonResponse({'error': 'No data found for the selected station.'})
+		# Creating the Table Based on User Input
+		table = hs.make_table(
+			merged_dataframe=merged_df,
+			metrics=selected_metric_abbr,
+			# remove_neg=remove_neg,
+			# remove_zero=remove_zero,
+			mase_m=extra_param_dict['mase_m'],
+			dmod_j=extra_param_dict['dmod_j'],
+			nse_mod_j=extra_param_dict['nse_mod_j'],
+			h6_mhe_k=extra_param_dict['h6_mhe_k'],
+			h6_ahe_k=extra_param_dict['h6_ahe_k'],
+			h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
+			d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
+			lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
+			# seasonal_periods=all_date_range_list
+		)
+		table_html = table.transpose()
+		table_html = table_html.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
+
+		# Creating the Table Based on User Input
+		table2 = hs.make_table(
+			merged_dataframe=merged_df2,
+			metrics=selected_metric_abbr,
+			# remove_neg=remove_neg,
+			# remove_zero=remove_zero,
+			mase_m=extra_param_dict['mase_m'],
+			dmod_j=extra_param_dict['dmod_j'],
+			nse_mod_j=extra_param_dict['nse_mod_j'],
+			h6_mhe_k=extra_param_dict['h6_mhe_k'],
+			h6_ahe_k=extra_param_dict['h6_ahe_k'],
+			h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
+			d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
+			lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
+			# seasonal_periods=all_date_range_list
+		)
+		table_html2 = table2.transpose()
+		table_html2 = table_html2.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
+
+		return HttpResponse(table_html)
+
+	except Exception:
+		traceback.print_exc()
+		return JsonResponse({'error': 'No data found for the selected station.'})
+
 
 def make_table_ajax2(request):
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        # Indexing the metrics to get the abbreviations
-        selected_metric_abbr = get_data.getlist("metrics[]", None)
+		# Indexing the metrics to get the abbreviations
+		selected_metric_abbr = get_data.getlist("metrics[]", None)
 
-        # print(selected_metric_abbr)
+		# print(selected_metric_abbr)
 
-        # Retrive additional parameters if they exist
-        # Retrieving the extra optional parameters
-        extra_param_dict = {}
+		# Retrive additional parameters if they exist
+		# Retrieving the extra optional parameters
+		extra_param_dict = {}
 
-        if request.GET.get('mase_m', None) is not None:
-            mase_m = float(request.GET.get('mase_m', None))
-            extra_param_dict['mase_m'] = mase_m
-        else:
-            mase_m = 1
-            extra_param_dict['mase_m'] = mase_m
+		if request.GET.get('mase_m', None) is not None:
+			mase_m = float(request.GET.get('mase_m', None))
+			extra_param_dict['mase_m'] = mase_m
+		else:
+			mase_m = 1
+			extra_param_dict['mase_m'] = mase_m
 
-        if request.GET.get('dmod_j', None) is not None:
-            dmod_j = float(request.GET.get('dmod_j', None))
-            extra_param_dict['dmod_j'] = dmod_j
-        else:
-            dmod_j = 1
-            extra_param_dict['dmod_j'] = dmod_j
+		if request.GET.get('dmod_j', None) is not None:
+			dmod_j = float(request.GET.get('dmod_j', None))
+			extra_param_dict['dmod_j'] = dmod_j
+		else:
+			dmod_j = 1
+			extra_param_dict['dmod_j'] = dmod_j
 
-        if request.GET.get('nse_mod_j', None) is not None:
-            nse_mod_j = float(request.GET.get('nse_mod_j', None))
-            extra_param_dict['nse_mod_j'] = nse_mod_j
-        else:
-            nse_mod_j = 1
-            extra_param_dict['nse_mod_j'] = nse_mod_j
+		if request.GET.get('nse_mod_j', None) is not None:
+			nse_mod_j = float(request.GET.get('nse_mod_j', None))
+			extra_param_dict['nse_mod_j'] = nse_mod_j
+		else:
+			nse_mod_j = 1
+			extra_param_dict['nse_mod_j'] = nse_mod_j
 
-        if request.GET.get('h6_k_MHE', None) is not None:
-            h6_mhe_k = float(request.GET.get('h6_k_MHE', None))
-            extra_param_dict['h6_mhe_k'] = h6_mhe_k
-        else:
-            h6_mhe_k = 1
-            extra_param_dict['h6_mhe_k'] = h6_mhe_k
+		if request.GET.get('h6_k_MHE', None) is not None:
+			h6_mhe_k = float(request.GET.get('h6_k_MHE', None))
+			extra_param_dict['h6_mhe_k'] = h6_mhe_k
+		else:
+			h6_mhe_k = 1
+			extra_param_dict['h6_mhe_k'] = h6_mhe_k
 
-        if request.GET.get('h6_k_AHE', None) is not None:
-            h6_ahe_k = float(request.GET.get('h6_k_AHE', None))
-            extra_param_dict['h6_ahe_k'] = h6_ahe_k
-        else:
-            h6_ahe_k = 1
-            extra_param_dict['h6_ahe_k'] = h6_ahe_k
+		if request.GET.get('h6_k_AHE', None) is not None:
+			h6_ahe_k = float(request.GET.get('h6_k_AHE', None))
+			extra_param_dict['h6_ahe_k'] = h6_ahe_k
+		else:
+			h6_ahe_k = 1
+			extra_param_dict['h6_ahe_k'] = h6_ahe_k
 
-        if request.GET.get('h6_k_RMSHE', None) is not None:
-            h6_rmshe_k = float(request.GET.get('h6_k_RMSHE', None))
-            extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
-        else:
-            h6_rmshe_k = 1
-            extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
+		if request.GET.get('h6_k_RMSHE', None) is not None:
+			h6_rmshe_k = float(request.GET.get('h6_k_RMSHE', None))
+			extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
+		else:
+			h6_rmshe_k = 1
+			extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
 
-        if float(request.GET.get('lm_x_bar', None)) != 1:
-            lm_x_bar_p = float(request.GET.get('lm_x_bar', None))
-            extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
-        else:
-            lm_x_bar_p = None
-            extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
+		if float(request.GET.get('lm_x_bar', None)) != 1:
+			lm_x_bar_p = float(request.GET.get('lm_x_bar', None))
+			extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
+		else:
+			lm_x_bar_p = None
+			extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
 
-        if float(request.GET.get('d1_p_x_bar', None)) != 1:
-            d1_p_x_bar_p = float(request.GET.get('d1_p_x_bar', None))
-            extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
-        else:
-            d1_p_x_bar_p = None
-            extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
+		if float(request.GET.get('d1_p_x_bar', None)) != 1:
+			d1_p_x_bar_p = float(request.GET.get('d1_p_x_bar', None))
+			extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
+		else:
+			d1_p_x_bar_p = None
+			extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Correct the Bias in Sumulation'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		'''Correct the Bias in Sumulation'''
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        dates = []
-        values = []
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		dates = []
+		values = []
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        '''Merge Data'''
+				dates.append(date)
+				values.append(value)
 
-        merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        '''Plotting Data'''
+		'''Merge Data'''
 
-        # Creating the Table Based on User Input
-        table = hs.make_table(
-            merged_dataframe=merged_df,
-            metrics=selected_metric_abbr,
-            # remove_neg=remove_neg,
-            # remove_zero=remove_zero,
-            mase_m=extra_param_dict['mase_m'],
-            dmod_j=extra_param_dict['dmod_j'],
-            nse_mod_j=extra_param_dict['nse_mod_j'],
-            h6_mhe_k=extra_param_dict['h6_mhe_k'],
-            h6_ahe_k=extra_param_dict['h6_ahe_k'],
-            h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
-            d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
-            lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
-            # seasonal_periods=all_date_range_list
-        )
-        table_html = table.transpose()
-        table_html = table_html.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
+		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
-        # Creating the Table Based on User Input
-        table2 = hs.make_table(
-            merged_dataframe=merged_df2,
-            metrics=selected_metric_abbr,
-            # remove_neg=remove_neg,
-            # remove_zero=remove_zero,
-            mase_m=extra_param_dict['mase_m'],
-            dmod_j=extra_param_dict['dmod_j'],
-            nse_mod_j=extra_param_dict['nse_mod_j'],
-            h6_mhe_k=extra_param_dict['h6_mhe_k'],
-            h6_ahe_k=extra_param_dict['h6_ahe_k'],
-            h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
-            d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
-            lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
-            # seasonal_periods=all_date_range_list
-        )
-        table_html2 = table2.transpose()
-        table_html2 = table_html2.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
+		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
-        return HttpResponse(table_html2)
+		'''Plotting Data'''
 
-    except Exception:
-        traceback.print_exc()
-        return JsonResponse({'error': 'No data found for the selected station.'})
+		# Creating the Table Based on User Input
+		table = hs.make_table(
+			merged_dataframe=merged_df,
+			metrics=selected_metric_abbr,
+			# remove_neg=remove_neg,
+			# remove_zero=remove_zero,
+			mase_m=extra_param_dict['mase_m'],
+			dmod_j=extra_param_dict['dmod_j'],
+			nse_mod_j=extra_param_dict['nse_mod_j'],
+			h6_mhe_k=extra_param_dict['h6_mhe_k'],
+			h6_ahe_k=extra_param_dict['h6_ahe_k'],
+			h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
+			d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
+			lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
+			# seasonal_periods=all_date_range_list
+		)
+		table_html = table.transpose()
+		table_html = table_html.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
+
+		# Creating the Table Based on User Input
+		table2 = hs.make_table(
+			merged_dataframe=merged_df2,
+			metrics=selected_metric_abbr,
+			# remove_neg=remove_neg,
+			# remove_zero=remove_zero,
+			mase_m=extra_param_dict['mase_m'],
+			dmod_j=extra_param_dict['dmod_j'],
+			nse_mod_j=extra_param_dict['nse_mod_j'],
+			h6_mhe_k=extra_param_dict['h6_mhe_k'],
+			h6_ahe_k=extra_param_dict['h6_ahe_k'],
+			h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
+			d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
+			lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
+			# seasonal_periods=all_date_range_list
+		)
+		table_html2 = table2.transpose()
+		table_html2 = table_html2.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
+
+		return HttpResponse(table_html2)
+
+	except Exception:
+		traceback.print_exc()
+		return JsonResponse({'error': 'No data found for the selected station.'})
+
 
 def get_units_title(unit_type):
-    """
+	"""
     Get the title for units
     """
-    units_title = "m"
-    if unit_type == 'english':
-        units_title = "ft"
-    return units_title
+	units_title = "m"
+	if unit_type == 'english':
+		units_title = "ft"
+	return units_title
+
 
 def get_available_dates(request):
-    get_data = request.GET
+	get_data = request.GET
 
-    watershed = get_data['watershed']
-    subbasin = get_data['subbasin']
-    comid = get_data['streamcomid']
+	watershed = get_data['watershed']
+	subbasin = get_data['subbasin']
+	comid = get_data['streamcomid']
 
-    # request_params
-    request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid)
+	# request_params
+	request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid)
 
-    # Token is for the demo account
-    request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+	# Token is for the demo account
+	request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-    res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetAvailableDates/',
-                           params=request_params, headers=request_headers)
+	res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetAvailableDates/',
+	                   params=request_params, headers=request_headers)
 
-    dates = []
-    for date in eval(res.content):
-        if len(date) == 10:
-            date_mod = date + '000'
-            date_f = dt.datetime.strptime(date_mod, '%Y%m%d.%H%M').strftime('%Y-%m-%d %H:%M')
-        else:
-            date_f = dt.datetime.strptime(date, '%Y%m%d.%H%M').strftime('%Y-%m-%d %H:%M')
-        dates.append([date_f, date, watershed, subbasin, comid])
+	dates = []
+	for date in eval(res.content):
+		if len(date) == 10:
+			date_mod = date + '000'
+			date_f = dt.datetime.strptime(date_mod, '%Y%m%d.%H%M').strftime('%Y-%m-%d %H:%M')
+		else:
+			date_f = dt.datetime.strptime(date, '%Y%m%d.%H%M').strftime('%Y-%m-%d %H:%M')
+		dates.append([date_f, date, watershed, subbasin, comid])
 
-    dates.append(['Select Date', dates[-1][1]])
-    dates.reverse()
+	dates.append(['Select Date', dates[-1][1]])
+	dates.reverse()
 
-    return JsonResponse({
-        "success": "Data analysis complete!",
-        "available_dates": json.dumps(dates)
-    })
+	return JsonResponse({
+		"success": "Data analysis complete!",
+		"available_dates": json.dumps(dates)
+	})
+
 
 def get_time_series(request):
-    get_data = request.GET
-    try:
-        # model = get_data['model']
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        if get_data['startdate'] != '':
-            startdate = get_data['startdate']
-        else:
-            startdate = 'most_recent'
-        units = 'metric'
+	get_data = request.GET
+	try:
+		# model = get_data['model']
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		if get_data['startdate'] != '':
+			startdate = get_data['startdate']
+		else:
+			startdate = 'most_recent'
+		units = 'metric'
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, forecast_folder=startdate, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid,
+		                      forecast_folder=startdate, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetForecast/',
-                           params=request_params, headers=request_headers)
+		res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetForecast/',
+		                   params=request_params, headers=request_headers)
 
-        pairs = res.content.splitlines()
-        header = pairs.pop(0)
+		pairs = res.content.splitlines()
+		header = pairs.pop(0)
 
-        dates = []
-        hres_dates = []
+		dates = []
+		hres_dates = []
 
-        mean_values = []
-        hres_values = []
-        min_values = []
-        max_values = []
-        std_dev_lower_values = []
-        std_dev_upper_values = []
+		mean_values = []
+		hres_values = []
+		min_values = []
+		max_values = []
+		std_dev_lower_values = []
+		std_dev_upper_values = []
 
-        for pair in pairs:
-            pair = pair.decode('utf-8')
-            if b'high_res' in header:
-                hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-                hres_values.append(float(pair.split(',')[1]))
+		for pair in pairs:
+			pair = pair.decode('utf-8')
+			if b'high_res' in header:
+				hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+				hres_values.append(float(pair.split(',')[1]))
 
-                if 'nan' not in pair:
-                    dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-                    max_values.append(float(pair.split(',')[2]))
-                    mean_values.append(float(pair.split(',')[3]))
-                    min_values.append(float(pair.split(',')[4]))
-                    std_dev_lower_values.append(float(pair.split(',')[5]))
-                    std_dev_upper_values.append(float(pair.split(',')[6]))
+				if 'nan' not in pair:
+					dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+					max_values.append(float(pair.split(',')[2]))
+					mean_values.append(float(pair.split(',')[3]))
+					min_values.append(float(pair.split(',')[4]))
+					std_dev_lower_values.append(float(pair.split(',')[5]))
+					std_dev_upper_values.append(float(pair.split(',')[6]))
 
-            else:
-                dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-                max_values.append(float(pair.split(',')[1]))
-                mean_values.append(float(pair.split(',')[2]))
-                min_values.append(float(pair.split(',')[3]))
-                std_dev_lower_values.append(float(pair.split(',')[4]))
-                std_dev_upper_values.append(float(pair.split(',')[5]))
+			else:
+				dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+				max_values.append(float(pair.split(',')[1]))
+				mean_values.append(float(pair.split(',')[2]))
+				min_values.append(float(pair.split(',')[3]))
+				std_dev_lower_values.append(float(pair.split(',')[4]))
+				std_dev_upper_values.append(float(pair.split(',')[5]))
 
-        # ----------------------------------------------
-        # Chart Section
-        # ----------------------------------------------
+		# Removing Negative Values
+		mean_values2 = [0 if i < 0 else i for i in mean_values]
+		mean_values = mean_values2
+		hres_values2 = [0 if i < 0 else i for i in hres_values]
+		hres_values = hres_values2
+		min_values2 = [0 if i < 0 else i for i in min_values]
+		min_values = min_values2
+		max_values2 = [0 if i < 0 else i for i in max_values]
+		max_values = max_values2
+		std_dev_lower_values2 = [0 if i < 0 else i for i in std_dev_lower_values]
+		std_dev_lower_values = std_dev_lower_values2
+		std_dev_upper_values2 = [0 if i < 0 else i for i in std_dev_upper_values]
+		std_dev_upper_values = std_dev_upper_values2
 
-        datetime_start = dates[0]
-        datetime_end = dates[-1]
+		# ----------------------------------------------
+		# Chart Section
+		# ----------------------------------------------
 
-        avg_series = go.Scatter(
-            name='Mean',
-            x=dates,
-            y=mean_values,
-            line=dict(
-                color='blue',
-            )
-        )
+		datetime_start = dates[0]
+		datetime_end = dates[-1]
 
-        max_series = go.Scatter(
-            name='Max',
-            x=dates,
-            y=max_values,
-            fill='tonexty',
-            mode='lines',
-            line=dict(
-                color='rgb(152, 251, 152)',
-                width=0,
-            )
-        )
+		avg_series = go.Scatter(
+			name='Mean',
+			x=dates,
+			y=mean_values,
+			line=dict(
+				color='blue',
+			)
+		)
 
-        min_series = go.Scatter(
-            name='Min',
-            x=dates,
-            y=min_values,
-            fill=None,
-            mode='lines',
-            line=dict(
-                color='rgb(152, 251, 152)',
-            )
-        )
+		max_series = go.Scatter(
+			name='Max',
+			x=dates,
+			y=max_values,
+			fill='tonexty',
+			mode='lines',
+			line=dict(
+				color='rgb(152, 251, 152)',
+				width=0,
+			)
+		)
 
-        std_dev_lower_series = go.Scatter(
-            name='Std. Dev. Lower',
-            x=dates,
-            y=std_dev_lower_values,
-            fill='tonexty',
-            mode='lines',
-            line=dict(
-                color='rgb(152, 251, 152)',
-                width=0,
-            )
-        )
+		min_series = go.Scatter(
+			name='Min',
+			x=dates,
+			y=min_values,
+			fill=None,
+			mode='lines',
+			line=dict(
+				color='rgb(152, 251, 152)',
+			)
+		)
 
-        std_dev_upper_series = go.Scatter(
-            name='Std. Dev. Upper',
-            x=dates,
-            y=std_dev_upper_values,
-            fill='tonexty',
-            mode='lines',
-            line=dict(
-                width=0,
-                color='rgb(34, 139, 34)',
-            )
-        )
+		std_dev_lower_series = go.Scatter(
+			name='Std. Dev. Lower',
+			x=dates,
+			y=std_dev_lower_values,
+			fill='tonexty',
+			mode='lines',
+			line=dict(
+				color='rgb(152, 251, 152)',
+				width=0,
+			)
+		)
 
-        plot_series = [min_series,
-                       std_dev_lower_series,
-                       std_dev_upper_series,
-                       max_series,
-                       avg_series]
+		std_dev_upper_series = go.Scatter(
+			name='Std. Dev. Upper',
+			x=dates,
+			y=std_dev_upper_values,
+			fill='tonexty',
+			mode='lines',
+			line=dict(
+				width=0,
+				color='rgb(34, 139, 34)',
+			)
+		)
 
-        if hres_values:
-            plot_series.append(go.Scatter(
-                name='HRES',
-                x=hres_dates,
-                y=hres_values,
-                line=dict(
-                    color='black',
-                )
-            ))
+		plot_series = [min_series,
+		               std_dev_lower_series,
+		               std_dev_upper_series,
+		               max_series,
+		               avg_series]
 
-        try:
-            return_shapes, return_annotations = get_return_period_ploty_info(request, datetime_start, datetime_end)
-        except:
-            return_annotations = []
-            return_shapes = []
+		if hres_values:
+			plot_series.append(go.Scatter(
+				name='HRES',
+				x=hres_dates,
+				y=hres_values,
+				line=dict(
+					color='black',
+				)
+			))
 
-        layout = go.Layout(
-            title="Forecast<br><sub>{0} ({1}): {2}</sub>".format(
-                watershed, subbasin, comid),
-            xaxis=dict(
-                title='Date',
-            ),
-            yaxis=dict(
-                title='Streamflow ({}<sup>3</sup>/s)'.format(get_units_title(units)),
-                range=[0, max(max_values) + max(max_values)/5]
-            ),
-            shapes=return_shapes,
-            annotations=return_annotations
-        )
+		try:
+			return_shapes, return_annotations = get_return_period_ploty_info(request, datetime_start, datetime_end)
+		except:
+			return_annotations = []
+			return_shapes = []
 
-        chart_obj = PlotlyView(
-            go.Figure(data=plot_series,
-                      layout=layout)
-        )
+		layout = go.Layout(
+			title="Forecast<br><sub>{0} ({1}): {2}</sub>".format(
+				watershed, subbasin, comid),
+			xaxis=dict(
+				title='Date',
+			),
+			yaxis=dict(
+				title='Streamflow ({}<sup>3</sup>/s)'.format(get_units_title(units)),
+				range=[0, max(max_values) + max(max_values) / 5]
+			),
+			shapes=return_shapes,
+			annotations=return_annotations
+		)
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		chart_obj = PlotlyView(
+			go.Figure(data=plot_series,
+			          layout=layout)
+		)
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		context = {
+			'gizmo_object': chart_obj,
+		}
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No data found for the selected reach.'})
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No data found for the selected reach.'})
+
 
 def get_time_series_bc(request):
-    get_data = request.GET
-    try:
-        # model = get_data['model']
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        if get_data['startdate'] != '':
-            startdate = get_data['startdate']
-        else:
-            startdate = 'most_recent'
-        units = 'metric'
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	get_data = request.GET
+	try:
+		# model = get_data['model']
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		if get_data['startdate'] != '':
+			startdate = get_data['startdate']
+		else:
+			startdate = 'most_recent'
+		units = 'metric'
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
+		'''Get Simulated Data'''
 
-        '''Get Simulated Data'''
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_dates = []
+		era_values = []
 
-        era_dates = []
-        era_values = []
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        '''Get Observed Data'''
+		'''Get Observed Data'''
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        s = requests.get(url, verify=False).content
+		s = requests.get(url, verify=False).content
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
+		'''Get Forecast'''
 
-        '''Get Forecast'''
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid,
+		                      forecast_folder=startdate, return_format='csv')
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, forecast_folder=startdate, return_format='csv')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetForecast/',
+		                   params=request_params, headers=request_headers)
 
-        res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetForecast/',
-                           params=request_params, headers=request_headers)
+		pairs = res.content.splitlines()
+		header = pairs.pop(0)
 
-        pairs = res.content.splitlines()
-        header = pairs.pop(0)
+		dates = []
+		hres_dates = []
 
-        dates = []
-        hres_dates = []
+		mean_values = []
+		hres_values = []
+		min_values = []
+		max_values = []
+		std_dev_lower_values = []
+		std_dev_upper_values = []
 
-        mean_values = []
-        hres_values = []
-        min_values = []
-        max_values = []
-        std_dev_lower_values = []
-        std_dev_upper_values = []
+		for pair in pairs:
+			pair = pair.decode('utf-8')
+			if b'high_res' in header:
+				hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+				hres_values.append(float(pair.split(',')[1]))
 
-        for pair in pairs:
-            pair = pair.decode('utf-8')
-            if b'high_res' in header:
-                hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-                hres_values.append(float(pair.split(',')[1]))
+				if 'nan' not in pair:
+					dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+					max_values.append(float(pair.split(',')[2]))
+					mean_values.append(float(pair.split(',')[3]))
+					min_values.append(float(pair.split(',')[4]))
+					std_dev_lower_values.append(float(pair.split(',')[5]))
+					std_dev_upper_values.append(float(pair.split(',')[6]))
 
-                if 'nan' not in pair:
-                    dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-                    max_values.append(float(pair.split(',')[2]))
-                    mean_values.append(float(pair.split(',')[3]))
-                    min_values.append(float(pair.split(',')[4]))
-                    std_dev_lower_values.append(float(pair.split(',')[5]))
-                    std_dev_upper_values.append(float(pair.split(',')[6]))
+			else:
+				dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+				max_values.append(float(pair.split(',')[1]))
+				mean_values.append(float(pair.split(',')[2]))
+				min_values.append(float(pair.split(',')[3]))
+				std_dev_lower_values.append(float(pair.split(',')[4]))
+				std_dev_upper_values.append(float(pair.split(',')[5]))
 
-            else:
-                dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-                max_values.append(float(pair.split(',')[1]))
-                mean_values.append(float(pair.split(',')[2]))
-                min_values.append(float(pair.split(',')[3]))
-                std_dev_lower_values.append(float(pair.split(',')[4]))
-                std_dev_upper_values.append(float(pair.split(',')[5]))
+		# Removing Negative Values
+		mean_values2 = [0 if i < 0 else i for i in mean_values]
+		mean_values = mean_values2
+		hres_values2 = [0 if i < 0 else i for i in hres_values]
+		hres_values = hres_values2
+		min_values2 = [0 if i < 0 else i for i in min_values]
+		min_values = min_values2
+		max_values2 = [0 if i < 0 else i for i in max_values]
+		max_values = max_values2
+		std_dev_lower_values2 = [0 if i < 0 else i for i in std_dev_lower_values]
+		std_dev_lower_values = std_dev_lower_values2
+		std_dev_upper_values2 = [0 if i < 0 else i for i in std_dev_upper_values]
+		std_dev_upper_values = std_dev_upper_values2
 
-        mean_forecast = pd.DataFrame(np.array(mean_values), columns=['streamflow (m3/s)'], index=dates)
-        max_forecast = pd.DataFrame(np.array(max_values), columns=['streamflow (m3/s)'], index=dates)
-        min_forecast = pd.DataFrame(np.array(min_values), columns=['streamflow (m3/s)'], index=dates)
-        std_dev_lower_forecast = pd.DataFrame(np.array(std_dev_lower_values), columns=['streamflow (m3/s)'], index=dates)
-        std_dev_upper_forecast = pd.DataFrame(np.array(std_dev_upper_values), columns=['streamflow (m3/s)'], index=dates)
+		mean_forecast = pd.DataFrame(np.array(mean_values), columns=['streamflow (m3/s)'], index=dates)
+		max_forecast = pd.DataFrame(np.array(max_values), columns=['streamflow (m3/s)'], index=dates)
+		min_forecast = pd.DataFrame(np.array(min_values), columns=['streamflow (m3/s)'], index=dates)
+		std_dev_lower_forecast = pd.DataFrame(np.array(std_dev_lower_values), columns=['streamflow (m3/s)'],
+		                                      index=dates)
+		std_dev_upper_forecast = pd.DataFrame(np.array(std_dev_upper_values), columns=['streamflow (m3/s)'],
+		                                      index=dates)
 
-        high_res_forecast = pd.DataFrame(np.array(hres_values), columns=['streamflow (m3/s)'], index=hres_dates)
+		high_res_forecast = pd.DataFrame(np.array(hres_values), columns=['streamflow (m3/s)'], index=hres_dates)
 
-        '''Correct Forecast'''
+		'''Correct Forecast'''
 
-        iniDate = mean_forecast.index[0]
-        monIdx = iniDate.month
+		iniDate = mean_forecast.index[0]
+		monIdx = iniDate.month
 
-        # filter historic data to only be current month
-        monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-        # filter the observations to current month
-        monObs = observed_df[observed_df.index.month.isin([monIdx])]
+		# filter historic data to only be current month
+		monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+		# filter the observations to current month
+		monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-        # get maximum value to bound histogram
-        obs_tempMax = np.max(monObs.max())
-        sim_tempMax = np.max(monData.max())
-        obs_tempMin = np.min(monObs.min())
-        sim_tempMin = np.min(monData.min())
+		# get maximum value to bound histogram
+		obs_tempMax = np.max(monObs.max())
+		sim_tempMax = np.max(monData.max())
+		obs_tempMin = np.min(monObs.min())
+		sim_tempMin = np.min(monData.min())
 
-        obs_maxVal = math.ceil(obs_tempMax)
-        sim_maxVal = math.ceil(sim_tempMax)
-        obs_minVal = math.floor(obs_tempMin)
-        sim_minVal = math.floor(sim_tempMin)
+		obs_maxVal = math.ceil(obs_tempMax)
+		sim_maxVal = math.ceil(sim_tempMax)
+		obs_minVal = math.floor(obs_tempMin)
+		sim_minVal = math.floor(sim_tempMin)
 
-        n_elementos_obs = len(monObs.iloc[:, 0].values)
-        n_elementos_sim = len(monData.iloc[:, 0].values)
+		n_elementos_obs = len(monObs.iloc[:, 0].values)
+		n_elementos_sim = len(monData.iloc[:, 0].values)
 
-        n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-        n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+		n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+		n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-        # specify the bin width for histogram (in m3/s)
-        step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-        step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+		# specify the bin width for histogram (in m3/s)
+		step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+		step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-        # specify histogram bins
-        bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-        bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+		# specify histogram bins
+		bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+		bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-        # get the histograms
-        sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-        obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+		if (bins_obs[0] == 0):
+			bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+		elif (bins_obs[0] > 0):
+			bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-        # adjust the bins to be the center
-        bin_edges_sim = bin_edges_sim[1:]
-        bin_edges_obs = bin_edges_obs[1:]
+		if (bins_sim[0] >= 0):
+			bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+		elif (bins_sim[0] > 0):
+			bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-        # normalize the histograms
-        sim_counts = sim_counts.astype(float) / monData.size
-        obs_counts = obs_counts.astype(float) / monObs.size
+		# get the histograms
+		sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+		obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-        # calculate the cdfs
-        simcdf = np.cumsum(sim_counts)
-        obscdf = np.cumsum(obs_counts)
+		# adjust the bins to be the center
+		bin_edges_sim = bin_edges_sim[1:]
+		bin_edges_obs = bin_edges_obs[1:]
 
-        # interpolated function to convert simulated streamflow to prob
-        f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
+		# normalize the histograms
+		sim_counts = sim_counts.astype(float) / monData.size
+		obs_counts = obs_counts.astype(float) / monObs.size
 
-        # interpolated function to convert simulated prob to observed streamflow
-        backout = interpolate.interp1d(obscdf, bin_edges_obs)
+		# calculate the cdfs
+		simcdf = np.cumsum(sim_counts)
+		obscdf = np.cumsum(obs_counts)
 
-        # Fixing the forecast
-        fixed_dates = mean_forecast.index.to_list()
-        fixed_mean_values = backout(f(mean_forecast.iloc[:, 0].to_list()))
-        fixed_mean_values = fixed_mean_values.tolist()
-        fixed_max_values = backout(f(max_forecast.iloc[:, 0].to_list()))
-        fixed_max_values = fixed_max_values.tolist()
-        fixed_min_values = backout(f(min_forecast.iloc[:, 0].to_list()))
-        fixed_min_values = fixed_min_values.tolist()
-        fixed_std_dev_lower_values = backout(f(std_dev_lower_forecast.iloc[:, 0].to_list()))
-        fixed_std_dev_lower_values = fixed_std_dev_lower_values.tolist()
-        fixed_std_dev_upper_values = backout(f(std_dev_upper_forecast.iloc[:, 0].to_list()))
-        fixed_std_dev_upper_values = fixed_std_dev_upper_values.tolist()
+		# interpolated function to convert simulated streamflow to prob
+		f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
 
-        # Fixing the high-res forecast
-        fixed_dates_high_res = high_res_forecast.index.to_list()
-        fixed_high_res_values = backout(f(high_res_forecast.iloc[:, 0].to_list()))
-        fixed_high_res_values = fixed_high_res_values.tolist()
+		# interpolated function to convert simulated prob to observed streamflow
+		backout = interpolate.interp1d(obscdf, bin_edges_obs, fill_value="extrapolate")
 
-        # ----------------------------------------------
-        # Chart Section
-        # ----------------------------------------------
+		# Fixing the forecast
+		fixed_dates = mean_forecast.index.to_list()
+		fixed_mean_values = backout(f(mean_forecast.iloc[:, 0].to_list()))
+		fixed_mean_values = fixed_mean_values.tolist()
+		fixed_max_values = backout(f(max_forecast.iloc[:, 0].to_list()))
+		fixed_max_values = fixed_max_values.tolist()
+		fixed_min_values = backout(f(min_forecast.iloc[:, 0].to_list()))
+		fixed_min_values = fixed_min_values.tolist()
+		fixed_std_dev_lower_values = backout(f(std_dev_lower_forecast.iloc[:, 0].to_list()))
+		fixed_std_dev_lower_values = fixed_std_dev_lower_values.tolist()
+		fixed_std_dev_upper_values = backout(f(std_dev_upper_forecast.iloc[:, 0].to_list()))
+		fixed_std_dev_upper_values = fixed_std_dev_upper_values.tolist()
 
-        datetime_start = fixed_dates[0]
-        datetime_end = fixed_dates[-1]
+		# Fixing the high-res forecast
+		fixed_dates_high_res = high_res_forecast.index.to_list()
+		fixed_high_res_values = backout(f(high_res_forecast.iloc[:, 0].to_list()))
+		fixed_high_res_values = fixed_high_res_values.tolist()
 
-        avg_series = go.Scatter(
-            name='Mean',
-            x=fixed_dates,
-            y=fixed_mean_values,
-            line=dict(
-                color='blue',
-            )
-        )
+		# Removing Negative Values
+		fixed_mean_values2 = [0 if i < 0 else i for i in fixed_mean_values]
+		fixed_mean_values = fixed_mean_values2
+		fixed_high_res_values2 = [0 if i < 0 else i for i in fixed_high_res_values]
+		fixed_high_res_values = fixed_high_res_values2
+		fixed_min_values2 = [0 if i < 0 else i for i in fixed_min_values]
+		fixed_min_values = fixed_min_values2
+		fixed_max_values2 = [0 if i < 0 else i for i in fixed_max_values]
+		fixed_max_values = fixed_max_values2
+		fixed_std_dev_lower_values2 = [0 if i < 0 else i for i in fixed_std_dev_lower_values]
+		fixed_std_dev_lower_values = fixed_std_dev_lower_values2
+		fixed_std_dev_upper_values2 = [0 if i < 0 else i for i in fixed_std_dev_upper_values]
+		fixed_std_dev_upper_values = fixed_std_dev_upper_values2
 
-        max_series = go.Scatter(
-            name='Max',
-            x=fixed_dates,
-            y=fixed_max_values,
-            fill='tonexty',
-            mode='lines',
-            line=dict(
-                color='rgb(152, 251, 152)',
-                width=0,
-            )
-        )
+		# ----------------------------------------------
+		# Chart Section
+		# ----------------------------------------------
 
-        min_series = go.Scatter(
-            name='Min',
-            x=fixed_dates,
-            y=fixed_min_values,
-            fill=None,
-            mode='lines',
-            line=dict(
-                color='rgb(152, 251, 152)',
-            )
-        )
+		datetime_start = fixed_dates[0]
+		datetime_end = fixed_dates[-1]
 
-        std_dev_lower_series = go.Scatter(
-            name='Std. Dev. Lower',
-            x=fixed_dates,
-            y=fixed_std_dev_lower_values,
-            fill='tonexty',
-            mode='lines',
-            line=dict(
-                color='rgb(152, 251, 152)',
-                width=0,
-            )
-        )
+		avg_series = go.Scatter(
+			name='Mean',
+			x=fixed_dates,
+			y=fixed_mean_values,
+			line=dict(
+				color='blue',
+			)
+		)
 
-        std_dev_upper_series = go.Scatter(
-            name='Std. Dev. Upper',
-            x=fixed_dates,
-            y=fixed_std_dev_upper_values,
-            fill='tonexty',
-            mode='lines',
-            line=dict(
-                width=0,
-                color='rgb(34, 139, 34)',
-            )
-        )
+		max_series = go.Scatter(
+			name='Max',
+			x=fixed_dates,
+			y=fixed_max_values,
+			fill='tonexty',
+			mode='lines',
+			line=dict(
+				color='rgb(152, 251, 152)',
+				width=0,
+			)
+		)
 
-        plot_series = [min_series,
-                       std_dev_lower_series,
-                       std_dev_upper_series,
-                       max_series,
-                       avg_series]
+		min_series = go.Scatter(
+			name='Min',
+			x=fixed_dates,
+			y=fixed_min_values,
+			fill=None,
+			mode='lines',
+			line=dict(
+				color='rgb(152, 251, 152)',
+			)
+		)
 
-        if hres_values:
-            plot_series.append(go.Scatter(
-                name='HRES',
-                x=fixed_dates_high_res,
-                y=fixed_high_res_values,
-                line=dict(
-                    color='black',
-                )
-            ))
+		std_dev_lower_series = go.Scatter(
+			name='Std. Dev. Lower',
+			x=fixed_dates,
+			y=fixed_std_dev_lower_values,
+			fill='tonexty',
+			mode='lines',
+			line=dict(
+				color='rgb(152, 251, 152)',
+				width=0,
+			)
+		)
 
-        try:
-            return_shapes, return_annotations = get_return_period_ploty_info(request, datetime_start, datetime_end)
-        except:
-            return_annotations = []
-            return_shapes = []
+		std_dev_upper_series = go.Scatter(
+			name='Std. Dev. Upper',
+			x=fixed_dates,
+			y=fixed_std_dev_upper_values,
+			fill='tonexty',
+			mode='lines',
+			line=dict(
+				width=0,
+				color='rgb(34, 139, 34)',
+			)
+		)
 
-        layout = go.Layout(
-            title="Forecast<br><sub>{0} ({1}): {2}</sub>".format(
-                watershed, subbasin, comid),
-            xaxis=dict(
-                title='Date',
-            ),
-            yaxis=dict(
-                title='Streamflow ({}<sup>3</sup>/s)'.format(get_units_title(units)),
-                range=[0, max(max_values) + max(max_values)/5]
-            ),
-            shapes=return_shapes,
-            annotations=return_annotations
-        )
+		plot_series = [min_series,
+		               std_dev_lower_series,
+		               std_dev_upper_series,
+		               max_series,
+		               avg_series]
 
-        chart_obj = PlotlyView(
-            go.Figure(data=plot_series,
-                      layout=layout)
-        )
+		if hres_values:
+			plot_series.append(go.Scatter(
+				name='HRES',
+				x=fixed_dates_high_res,
+				y=fixed_high_res_values,
+				line=dict(
+					color='black',
+				)
+			))
 
-        context = {
-            'gizmo_object': chart_obj,
-        }
+		try:
+			return_shapes, return_annotations = get_return_period_ploty_info(request, datetime_start, datetime_end)
+		except:
+			return_annotations = []
+			return_shapes = []
 
-        return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+		layout = go.Layout(
+			title="Forecast<br><sub>{0} ({1}): {2}</sub>".format(
+				watershed, subbasin, comid),
+			xaxis=dict(
+				title='Date',
+			),
+			yaxis=dict(
+				title='Streamflow ({}<sup>3</sup>/s)'.format(get_units_title(units)),
+				range=[0, max(max_values) + max(max_values) / 5]
+			),
+			shapes=return_shapes,
+			annotations=return_annotations
+		)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No data found for the selected reach.'})
+		chart_obj = PlotlyView(
+			go.Figure(data=plot_series,
+			          layout=layout)
+		)
+
+		context = {
+			'gizmo_object': chart_obj,
+		}
+
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No data found for the selected reach.'})
+
 
 def get_observed_discharge_csv(request):
-    """
+	"""
     Get observed data from csv files in Hydroshare
     """
 
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
 
-        s = requests.get(url, verify=False).content
+		s = requests.get(url, verify=False).content
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0, skiprows=26)
-        df.index = pd.to_datetime(df.index)
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0, skiprows=26)
+		df.index = pd.to_datetime(df.index)
 
-        datesObservedDischarge = df.index.tolist()
-        observedDischarge = df.iloc[:, 0].values
-        observedDischarge.tolist()
+		datesObservedDischarge = df.index.tolist()
+		observedDischarge = df.iloc[:, 0].values
+		observedDischarge.tolist()
 
-        pairs = [list(a) for a in zip(datesObservedDischarge, observedDischarge)]
+		pairs = [list(a) for a in zip(datesObservedDischarge, observedDischarge)]
 
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=observed_discharge_{0}.csv'.format(codEstacion)
+		response = HttpResponse(content_type='text/csv')
+		response['Content-Disposition'] = 'attachment; filename=observed_discharge_{0}.csv'.format(codEstacion)
 
-        writer = csv_writer(response)
-        writer.writerow(['datetime', 'flow (m3/s)'])
+		writer = csv_writer(response)
+		writer.writerow(['datetime', 'flow (m3/s)'])
 
-        for row_data in pairs:
-            writer.writerow(row_data)
+		for row_data in pairs:
+			writer.writerow(row_data)
 
-        return response
+		return response
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'An unknown error occurred while retrieving the Discharge Data.'})
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'An unknown error occurred while retrieving the Discharge Data.'})
 
 
 def get_simulated_discharge_csv(request):
-    """
+	"""
     Get historic simulations from ERA Interim
     """
 
-    try:
-        get_data = request.GET
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		get_data = request.GET
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        pairs = [list(a) for a in zip(era_dates, era_values)]
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=simulated_discharge_{0}.csv'.format(codEstacion)
+		pairs = [list(a) for a in zip(era_dates, era_values)]
 
-        writer = csv_writer(response)
-        writer.writerow(['datetime', 'flow (m3/s)'])
+		response = HttpResponse(content_type='text/csv')
+		response['Content-Disposition'] = 'attachment; filename=simulated_discharge_{0}.csv'.format(codEstacion)
 
-        for row_data in pairs:
-            writer.writerow(row_data)
+		writer = csv_writer(response)
+		writer.writerow(['datetime', 'flow (m3/s)'])
 
-        return response
+		for row_data in pairs:
+			writer.writerow(row_data)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'An unknown error occurred while retrieving the Discharge Data.'})
+		return response
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'An unknown error occurred while retrieving the Discharge Data.'})
+
 
 def get_simulated_bc_discharge_csv(request):
-    """
+	"""
     Get historic simulations from ERA Interim
     """
 
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	try:
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Correct the Bias in Sumulation'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-                 '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-                 '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		'''Correct the Bias in Sumulation'''
 
-        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
+		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
+		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
 
-        dates = []
-        values = []
+		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-        for year in years:
-            data_year = simulated_df[simulated_df.index.year == int(year)]
+		dates = []
+		values = []
 
-            for month in months:
-                data_month = data_year[data_year.index.month == int(month)]
+		for year in years:
+			data_year = simulated_df[simulated_df.index.year == int(year)]
 
-                # select a specific month for bias correction example
-                # in this case we will use current month from forecast
-                iniDate = data_month.index[0]
-                monIdx = iniDate.month
+			for month in months:
+				data_month = data_year[data_year.index.month == int(month)]
 
-                # filter historic data to only be current month
-                monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-                # filter the observations to current month
-                monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				# select a specific month for bias correction example
+				# in this case we will use current month from forecast
+				iniDate = data_month.index[0]
+				monIdx = iniDate.month
 
-                # get maximum value to bound histogram
-                obs_tempMax = np.max(monObs.max())
-                sim_tempMax = np.max(monData.max())
-                obs_tempMin = np.min(monObs.min())
-                sim_tempMin = np.min(monData.min())
+				# filter historic data to only be current month
+				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+				# filter the observations to current month
+				monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-                obs_maxVal = math.ceil(obs_tempMax)
-                sim_maxVal = math.ceil(sim_tempMax)
-                obs_minVal = math.floor(obs_tempMin)
-                sim_minVal = math.floor(sim_tempMin)
+				# get maximum value to bound histogram
+				obs_tempMax = np.max(monObs.max())
+				sim_tempMax = np.max(monData.max())
+				obs_tempMin = np.min(monObs.min())
+				sim_tempMin = np.min(monData.min())
 
-                n_elementos_obs = len(monObs.iloc[:, 0].values)
-                n_elementos_sim = len(monData.iloc[:, 0].values)
+				obs_maxVal = math.ceil(obs_tempMax)
+				sim_maxVal = math.ceil(sim_tempMax)
+				obs_minVal = math.floor(obs_tempMin)
+				sim_minVal = math.floor(sim_tempMin)
 
-                n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-                n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+				n_elementos_obs = len(monObs.iloc[:, 0].values)
+				n_elementos_sim = len(monData.iloc[:, 0].values)
 
-                # specify the bin width for histogram (in m3/s)
-                step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-                step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-                # specify histogram bins
-                bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-                bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+				# specify the bin width for histogram (in m3/s)
+				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-                # get the histograms
-                sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-                obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+				# specify histogram bins
+				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-                # adjust the bins to be the center
-                bin_edges_sim = bin_edges_sim[1:]
-                bin_edges_obs = bin_edges_obs[1:]
+				if (bins_obs[0] == 0):
+					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+				elif (bins_obs[0] > 0):
+					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-                # normalize the histograms
-                sim_counts = sim_counts.astype(float) / monData.size
-                obs_counts = obs_counts.astype(float) / monObs.size
+				if (bins_sim[0] >= 0):
+					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+				elif (bins_sim[0] > 0):
+					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-                # calculate the cdfs
-                simcdf = np.cumsum(sim_counts)
-                obscdf = np.cumsum(obs_counts)
+				# get the histograms
+				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-                # interpolated function to convert simulated streamflow to prob
-                f = interpolate.interp1d(bin_edges_sim, simcdf)
+				# adjust the bins to be the center
+				bin_edges_sim = bin_edges_sim[1:]
+				bin_edges_obs = bin_edges_obs[1:]
 
-                # interpolated function to convert simulated prob to observed streamflow
-                backout = interpolate.interp1d(obscdf, bin_edges_obs)
+				# normalize the histograms
+				sim_counts = sim_counts.astype(float) / monData.size
+				obs_counts = obs_counts.astype(float) / monObs.size
 
-                date = data_month.index.to_list()
-                value = backout(f(data_month.iloc[:, 0].to_list()))
-                value = value.tolist()
+				# calculate the cdfs
+				simcdf = np.cumsum(sim_counts)
+				obscdf = np.cumsum(obs_counts)
 
-                dates.append(date)
-                values.append(value)
+				# interpolated function to convert simulated streamflow to prob
+				f = interpolate.interp1d(bin_edges_sim, simcdf)
 
-        dates = reduce(lambda x, y: x + y, dates)
-        values = reduce(lambda x, y: x + y, values)
+				# interpolated function to convert simulated prob to observed streamflow
+				backout = interpolate.interp1d(obscdf, bin_edges_obs)
 
-        corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
+				date = data_month.index.to_list()
+				value = backout(f(data_month.iloc[:, 0].to_list()))
+				value = value.tolist()
 
-        print(len(era_values))
-        print(len(simulated_df.iloc[:, 0].values))
-        print(len(values))
-        print(len(corrected_df.iloc[:, 0].values))
+				dates.append(date)
+				values.append(value)
 
-        pairs = [list(a) for a in zip(dates, values)]
+		dates = reduce(lambda x, y: x + y, dates)
+		values = reduce(lambda x, y: x + y, values)
 
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=corrected_simulated_discharge_{0}.csv'.format(codEstacion)
+		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
 
-        writer = csv_writer(response)
-        writer.writerow(['datetime', 'flow (m3/s)'])
+		pairs = [list(a) for a in zip(dates, values)]
 
-        for row_data in pairs:
-            writer.writerow(row_data)
+		response = HttpResponse(content_type='text/csv')
+		response['Content-Disposition'] = 'attachment; filename=corrected_simulated_discharge_{0}.csv'.format(
+			codEstacion)
 
-        return response
+		writer = csv_writer(response)
+		writer.writerow(['datetime', 'flow (m3/s)'])
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'An unknown error occurred while retrieving the Discharge Data.'})
+		for row_data in pairs:
+			writer.writerow(row_data)
+
+		return response
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'An unknown error occurred while retrieving the Discharge Data.'})
+
 
 def get_forecast_data_csv(request):
-    """""
+	"""""
     Returns Forecast data as csv
     """""
 
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        # model = get_data['model']
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        if get_data['startdate'] != '':
-            startdate = get_data['startdate']
-        else:
-            startdate = 'most_recent'
+	try:
+		# model = get_data['model']
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		if get_data['startdate'] != '':
+			startdate = get_data['startdate']
+		else:
+			startdate = 'most_recent'
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetAvailableDates/',
-                           params=request_params, headers=request_headers)
+		res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetAvailableDates/',
+		                   params=request_params, headers=request_headers)
 
-        qout_data = res.content.decode('utf-8').splitlines()
-        qout_data.pop(0)
+		qout_data = res.content.decode('utf-8').splitlines()
+		qout_data.pop(0)
 
-        init_time = qout_data[0].split(',')[0].split(' ')[0]
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=streamflow_forecast_{0}_{1}_{2}_{3}.csv'.format(watershed,
-                                                                                                                subbasin,
-                                                                                                                comid,
-                                                                                                                init_time)
+		init_time = qout_data[0].split(',')[0].split(' ')[0]
+		response = HttpResponse(content_type='text/csv')
+		response['Content-Disposition'] = 'attachment; filename=streamflow_forecast_{0}_{1}_{2}_{3}.csv'.format(
+			watershed,
+			subbasin,
+			comid,
+			init_time)
 
-        writer = csv_writer(response)
-        writer.writerow(['datetime', 'high_res (m3/s)', 'max (m3/s)', 'mean (m3/s)', 'min (m3/s)', 'std_dev_range_lower (m3/s)',
-                         'std_dev_range_upper (m3/s)'])
+		writer = csv_writer(response)
+		writer.writerow(
+			['datetime', 'high_res (m3/s)', 'max (m3/s)', 'mean (m3/s)', 'min (m3/s)', 'std_dev_range_lower (m3/s)',
+			 'std_dev_range_upper (m3/s)'])
 
-        for row_data in qout_data:
-            writer.writerow(row_data.split(','))
+		for row_data in qout_data:
+			writer.writerow(row_data.split(','))
 
-        return response
+		return response
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No forecast data found.'})
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No forecast data found.'})
+
 
 def get_forecast_bc_data_csv(request):
-    """""
+	"""""
     Returns Forecast data as csv
     """""
 
-    get_data = request.GET
-    try:
-        # model = get_data['model']
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        if get_data['startdate'] != '':
-            startdate = get_data['startdate']
-        else:
-            startdate = 'most_recent'
-        units = 'metric'
-        codEstacion = get_data['stationcode']
-        nomEstacion = get_data['stationname']
+	get_data = request.GET
+	try:
+		# model = get_data['model']
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		if get_data['startdate'] != '':
+			startdate = get_data['startdate']
+		else:
+			startdate = 'most_recent'
+		units = 'metric'
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-        '''Get Simulated Data'''
+		'''Get Simulated Data'''
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-                               params=request_params, headers=request_headers)
+		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
+		                       params=request_params, headers=request_headers)
 
-        era_pairs = era_res.content.splitlines()
-        era_pairs.pop(0)
+		era_pairs = era_res.content.splitlines()
+		era_pairs.pop(0)
 
-        era_dates = []
-        era_values = []
+		era_dates = []
+		era_values = []
 
-        for era_pair in era_pairs:
-            era_pair = era_pair.decode('utf-8')
-            era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-            era_values.append(float(era_pair.split(',')[1]))
+		for era_pair in era_pairs:
+			era_pair = era_pair.decode('utf-8')
+			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+			era_values.append(float(era_pair.split(',')[1]))
 
-        simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		# Removing Negative Values
+		era_values2 = [0 if i < 0 else i for i in era_values]
+		era_values = era_values2
 
-        '''Get Observed Data'''
+		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
 
-        url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-            codEstacion)
+		'''Get Observed Data'''
 
-        s = requests.get(url, verify=False).content
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
+			codEstacion)
 
-        df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-        df.index = pd.to_datetime(df.index)
+		s = requests.get(url, verify=False).content
 
-        datesDischarge = df.index.tolist()
-        dataDischarge = df.iloc[:, 0].values
-        dataDischarge.tolist()
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
+		df.index = pd.to_datetime(df.index)
 
-        if isinstance(dataDischarge[0], str):
-            dataDischarge = map(float, dataDischarge)
+		datesDischarge = df.index.tolist()
+		dataDischarge = df.iloc[:, 0].values
+		dataDischarge.tolist()
 
-        observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
+		if isinstance(dataDischarge[0], str):
+			dataDischarge = map(float, dataDischarge)
 
-        '''Get Forecast'''
+		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-        # request_params
-        request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid,
-                              forecast_folder=startdate, return_format='csv')
+		'''Get Forecast'''
 
-        # Token is for the demo account
-        request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		# request_params
+		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid,
+		                      forecast_folder=startdate, return_format='csv')
 
-        res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetForecast/',
-                           params=request_params, headers=request_headers)
+		# Token is for the demo account
+		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
 
-        pairs = res.content.splitlines()
-        header = pairs.pop(0)
+		res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetForecast/',
+		                   params=request_params, headers=request_headers)
 
-        dates = []
-        hres_dates = []
+		pairs = res.content.splitlines()
+		header = pairs.pop(0)
 
-        mean_values = []
-        hres_values = []
-        min_values = []
-        max_values = []
-        std_dev_lower_values = []
-        std_dev_upper_values = []
+		dates = []
+		hres_dates = []
 
-        for pair in pairs:
-            pair = pair.decode('utf-8')
-            if b'high_res' in header:
-                hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-                hres_values.append(float(pair.split(',')[1]))
+		mean_values = []
+		hres_values = []
+		min_values = []
+		max_values = []
+		std_dev_lower_values = []
+		std_dev_upper_values = []
 
-                if 'nan' not in pair:
-                    dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-                    max_values.append(float(pair.split(',')[2]))
-                    mean_values.append(float(pair.split(',')[3]))
-                    min_values.append(float(pair.split(',')[4]))
-                    std_dev_lower_values.append(float(pair.split(',')[5]))
-                    std_dev_upper_values.append(float(pair.split(',')[6]))
+		for pair in pairs:
+			pair = pair.decode('utf-8')
+			if b'high_res' in header:
+				hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+				hres_values.append(float(pair.split(',')[1]))
 
-            else:
-                dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-                max_values.append(float(pair.split(',')[1]))
-                mean_values.append(float(pair.split(',')[2]))
-                min_values.append(float(pair.split(',')[3]))
-                std_dev_lower_values.append(float(pair.split(',')[4]))
-                std_dev_upper_values.append(float(pair.split(',')[5]))
+				if 'nan' not in pair:
+					dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+					max_values.append(float(pair.split(',')[2]))
+					mean_values.append(float(pair.split(',')[3]))
+					min_values.append(float(pair.split(',')[4]))
+					std_dev_lower_values.append(float(pair.split(',')[5]))
+					std_dev_upper_values.append(float(pair.split(',')[6]))
 
-        mean_forecast = pd.DataFrame(np.array(mean_values), columns=['streamflow (m3/s)'], index=dates)
-        max_forecast = pd.DataFrame(np.array(max_values), columns=['streamflow (m3/s)'], index=dates)
-        min_forecast = pd.DataFrame(np.array(min_values), columns=['streamflow (m3/s)'], index=dates)
-        std_dev_lower_forecast = pd.DataFrame(np.array(std_dev_lower_values), columns=['streamflow (m3/s)'],index=dates)
-        std_dev_upper_forecast = pd.DataFrame(np.array(std_dev_upper_values), columns=['streamflow (m3/s)'],index=dates)
+			else:
+				dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
+				max_values.append(float(pair.split(',')[1]))
+				mean_values.append(float(pair.split(',')[2]))
+				min_values.append(float(pair.split(',')[3]))
+				std_dev_lower_values.append(float(pair.split(',')[4]))
+				std_dev_upper_values.append(float(pair.split(',')[5]))
 
-        high_res_forecast = pd.DataFrame(np.array(hres_values), columns=['streamflow (m3/s)'], index=hres_dates)
+		# Removing Negative Values
+		mean_values2 = [0 if i < 0 else i for i in mean_values]
+		mean_values = mean_values2
+		hres_values2 = [0 if i < 0 else i for i in hres_values]
+		hres_values = hres_values2
+		min_values2 = [0 if i < 0 else i for i in min_values]
+		min_values = min_values2
+		max_values2 = [0 if i < 0 else i for i in max_values]
+		max_values = max_values2
+		std_dev_lower_values2 = [0 if i < 0 else i for i in std_dev_lower_values]
+		std_dev_lower_values = std_dev_lower_values2
+		std_dev_upper_values2 = [0 if i < 0 else i for i in std_dev_upper_values]
+		std_dev_upper_values = std_dev_upper_values2
 
-        '''Correct Forecast'''
+		mean_forecast = pd.DataFrame(np.array(mean_values), columns=['streamflow (m3/s)'], index=dates)
+		max_forecast = pd.DataFrame(np.array(max_values), columns=['streamflow (m3/s)'], index=dates)
+		min_forecast = pd.DataFrame(np.array(min_values), columns=['streamflow (m3/s)'], index=dates)
+		std_dev_lower_forecast = pd.DataFrame(np.array(std_dev_lower_values), columns=['streamflow (m3/s)'],
+		                                      index=dates)
+		std_dev_upper_forecast = pd.DataFrame(np.array(std_dev_upper_values), columns=['streamflow (m3/s)'],
+		                                      index=dates)
 
-        iniDate = mean_forecast.index[0]
-        monIdx = iniDate.month
+		high_res_forecast = pd.DataFrame(np.array(hres_values), columns=['streamflow (m3/s)'], index=hres_dates)
 
-        # filter historic data to only be current month
-        monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-        # filter the observations to current month
-        monObs = observed_df[observed_df.index.month.isin([monIdx])]
+		'''Correct Forecast'''
 
-        # get maximum value to bound histogram
-        obs_tempMax = np.max(monObs.max())
-        sim_tempMax = np.max(monData.max())
-        obs_tempMin = np.min(monObs.min())
-        sim_tempMin = np.min(monData.min())
+		iniDate = mean_forecast.index[0]
+		monIdx = iniDate.month
 
-        obs_maxVal = math.ceil(obs_tempMax)
-        sim_maxVal = math.ceil(sim_tempMax)
-        obs_minVal = math.floor(obs_tempMin)
-        sim_minVal = math.floor(sim_tempMin)
+		# filter historic data to only be current month
+		monData = simulated_df[simulated_df.index.month.isin([monIdx])]
+		# filter the observations to current month
+		monObs = observed_df[observed_df.index.month.isin([monIdx])]
 
-        n_elementos_obs = len(monObs.iloc[:, 0].values)
-        n_elementos_sim = len(monData.iloc[:, 0].values)
+		# get maximum value to bound histogram
+		obs_tempMax = np.max(monObs.max())
+		sim_tempMax = np.max(monData.max())
+		obs_tempMin = np.min(monObs.min())
+		sim_tempMin = np.min(monData.min())
 
-        n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-        n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
+		obs_maxVal = math.ceil(obs_tempMax)
+		sim_maxVal = math.ceil(sim_tempMax)
+		obs_minVal = math.floor(obs_tempMin)
+		sim_minVal = math.floor(sim_tempMin)
 
-        # specify the bin width for histogram (in m3/s)
-        step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-        step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
+		n_elementos_obs = len(monObs.iloc[:, 0].values)
+		n_elementos_sim = len(monData.iloc[:, 0].values)
 
-        # specify histogram bins
-        bins_obs = np.arange(-np.min(step_obs), obs_maxVal + np.min(step_obs), np.min(step_obs))
-        bins_sim = np.arange(-np.min(step_sim), sim_maxVal + np.min(step_sim), np.min(step_sim))
+		n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
+		n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
 
-        # get the histograms
-        sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-        obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
+		# specify the bin width for histogram (in m3/s)
+		step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
+		step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
 
-        # adjust the bins to be the center
-        bin_edges_sim = bin_edges_sim[1:]
-        bin_edges_obs = bin_edges_obs[1:]
+		# specify histogram bins
+		bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
+		bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
 
-        # normalize the histograms
-        sim_counts = sim_counts.astype(float) / monData.size
-        obs_counts = obs_counts.astype(float) / monObs.size
+		if (bins_obs[0] == 0):
+			bins_obs = np.concatenate((-bins_obs[1], bins_obs))
+		elif (bins_obs[0] > 0):
+			bins_obs = np.concatenate((-bins_obs[0], bins_obs))
 
-        # calculate the cdfs
-        simcdf = np.cumsum(sim_counts)
-        obscdf = np.cumsum(obs_counts)
+		if (bins_sim[0] >= 0):
+			bins_sim = np.concatenate((-bins_sim[1], bins_sim))
+		elif (bins_sim[0] > 0):
+			bins_sim = np.concatenate((-bins_sim[0], bins_sim))
 
-        # interpolated function to convert simulated streamflow to prob
-        f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
+		# get the histograms
+		sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
+		obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
 
-        # interpolated function to convert simulated prob to observed streamflow
-        backout = interpolate.interp1d(obscdf, bin_edges_obs)
+		# adjust the bins to be the center
+		bin_edges_sim = bin_edges_sim[1:]
+		bin_edges_obs = bin_edges_obs[1:]
 
-        # Fixing the forecast
-        fixed_dates = mean_forecast.index.to_list()
-        fixed_mean_values = backout(f(mean_forecast.iloc[:, 0].to_list()))
-        fixed_mean_values = fixed_mean_values.tolist()
-        fixed_max_values = backout(f(max_forecast.iloc[:, 0].to_list()))
-        fixed_max_values = fixed_max_values.tolist()
-        fixed_min_values = backout(f(min_forecast.iloc[:, 0].to_list()))
-        fixed_min_values = fixed_min_values.tolist()
-        fixed_std_dev_lower_values = backout(f(std_dev_lower_forecast.iloc[:, 0].to_list()))
-        fixed_std_dev_lower_values = fixed_std_dev_lower_values.tolist()
-        fixed_std_dev_upper_values = backout(f(std_dev_upper_forecast.iloc[:, 0].to_list()))
-        fixed_std_dev_upper_values = fixed_std_dev_upper_values.tolist()
+		# normalize the histograms
+		sim_counts = sim_counts.astype(float) / monData.size
+		obs_counts = obs_counts.astype(float) / monObs.size
 
-        # Fixing the high-res forecast
-        fixed_dates_high_res = high_res_forecast.index.to_list()
-        fixed_high_res_values = backout(f(high_res_forecast.iloc[:, 0].to_list()))
-        fixed_high_res_values = fixed_high_res_values.tolist()
+		# calculate the cdfs
+		simcdf = np.cumsum(sim_counts)
+		obscdf = np.cumsum(obs_counts)
 
-        pairs = [list(a) for a in zip(fixed_dates, fixed_mean_values)]
-        mean_forecast = pd.DataFrame(pairs, columns=['Datetime', 'mean (m3/s)'])
-        mean_forecast.set_index('Datetime', inplace=True)
+		# interpolated function to convert simulated streamflow to prob
+		f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
 
-        pairs = [list(a) for a in zip(fixed_dates, fixed_max_values)]
-        max_forecast = pd.DataFrame(pairs, columns=['Datetime', 'max (m3/s)'])
-        max_forecast.set_index('Datetime', inplace=True)
+		# interpolated function to convert simulated prob to observed streamflow
+		backout = interpolate.interp1d(obscdf, bin_edges_obs, fill_value="extrapolate")
 
-        pairs = [list(a) for a in zip(fixed_dates, fixed_min_values)]
-        min_forecast = pd.DataFrame(pairs, columns=['Datetime', 'min (m3/s)'])
-        min_forecast.set_index('Datetime', inplace=True)
+		# Fixing the forecast
+		fixed_dates = mean_forecast.index.to_list()
+		fixed_mean_values = backout(f(mean_forecast.iloc[:, 0].to_list()))
+		fixed_mean_values = fixed_mean_values.tolist()
+		fixed_max_values = backout(f(max_forecast.iloc[:, 0].to_list()))
+		fixed_max_values = fixed_max_values.tolist()
+		fixed_min_values = backout(f(min_forecast.iloc[:, 0].to_list()))
+		fixed_min_values = fixed_min_values.tolist()
+		fixed_std_dev_lower_values = backout(f(std_dev_lower_forecast.iloc[:, 0].to_list()))
+		fixed_std_dev_lower_values = fixed_std_dev_lower_values.tolist()
+		fixed_std_dev_upper_values = backout(f(std_dev_upper_forecast.iloc[:, 0].to_list()))
+		fixed_std_dev_upper_values = fixed_std_dev_upper_values.tolist()
 
-        pairs = [list(a) for a in zip(fixed_dates, fixed_std_dev_lower_values)]
-        std_dev_lower_forecast = pd.DataFrame(pairs, columns=['Datetime', 'std_dev_range_lower (m3/s)'])
-        std_dev_lower_forecast.set_index('Datetime', inplace=True)
+		# Fixing the high-res forecast
+		fixed_dates_high_res = high_res_forecast.index.to_list()
+		fixed_high_res_values = backout(f(high_res_forecast.iloc[:, 0].to_list()))
+		fixed_high_res_values = fixed_high_res_values.tolist()
 
-        pairs = [list(a) for a in zip(fixed_dates, fixed_std_dev_upper_values)]
-        std_dev_upper_forecast = pd.DataFrame(pairs, columns=['Datetime', 'std_dev_range_upper (m3/s)'])
-        std_dev_upper_forecast.set_index('Datetime', inplace=True)
+		# Removing Negative Values
+		fixed_mean_values2 = [0 if i < 0 else i for i in fixed_mean_values]
+		fixed_mean_values = fixed_mean_values2
+		fixed_high_res_values2 = [0 if i < 0 else i for i in fixed_high_res_values]
+		fixed_high_res_values = fixed_high_res_values2
+		fixed_min_values2 = [0 if i < 0 else i for i in fixed_min_values]
+		fixed_min_values = fixed_min_values2
+		fixed_max_values2 = [0 if i < 0 else i for i in fixed_max_values]
+		fixed_max_values = fixed_max_values2
+		fixed_std_dev_lower_values2 = [0 if i < 0 else i for i in fixed_std_dev_lower_values]
+		fixed_std_dev_lower_values = fixed_std_dev_lower_values2
+		fixed_std_dev_upper_values2 = [0 if i < 0 else i for i in fixed_std_dev_upper_values]
+		fixed_std_dev_upper_values = fixed_std_dev_upper_values2
 
-        pairs = [list(a) for a in zip(fixed_dates_high_res, fixed_high_res_values)]
-        high_res_forecast = pd.DataFrame(pairs, columns=['Datetime', 'high_res (m3/s)'])
-        high_res_forecast.set_index('Datetime', inplace=True)
+		pairs = [list(a) for a in zip(fixed_dates, fixed_mean_values)]
+		mean_forecast = pd.DataFrame(pairs, columns=['Datetime', 'mean (m3/s)'])
+		mean_forecast.set_index('Datetime', inplace=True)
 
-        init_time = mean_forecast.index[0]
+		pairs = [list(a) for a in zip(fixed_dates, fixed_max_values)]
+		max_forecast = pd.DataFrame(pairs, columns=['Datetime', 'max (m3/s)'])
+		max_forecast.set_index('Datetime', inplace=True)
 
-        corrected_forecast_df = pd.concat([mean_forecast, max_forecast, mean_forecast, min_forecast, std_dev_lower_forecast, std_dev_upper_forecast, high_res_forecast], axis=1)
+		pairs = [list(a) for a in zip(fixed_dates, fixed_min_values)]
+		min_forecast = pd.DataFrame(pairs, columns=['Datetime', 'min (m3/s)'])
+		min_forecast.set_index('Datetime', inplace=True)
 
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=corrected_streamflow_forecast_{0}_{1}_{2}_{3}.csv'.format(watershed, subbasin, comid, init_time)
-        corrected_forecast_df.to_csv(encoding='utf-8', header=True, path_or_buf=response)
+		pairs = [list(a) for a in zip(fixed_dates, fixed_std_dev_lower_values)]
+		std_dev_lower_forecast = pd.DataFrame(pairs, columns=['Datetime', 'std_dev_range_lower (m3/s)'])
+		std_dev_lower_forecast.set_index('Datetime', inplace=True)
 
-        return response
+		pairs = [list(a) for a in zip(fixed_dates, fixed_std_dev_upper_values)]
+		std_dev_upper_forecast = pd.DataFrame(pairs, columns=['Datetime', 'std_dev_range_upper (m3/s)'])
+		std_dev_upper_forecast.set_index('Datetime', inplace=True)
 
-    except Exception as e:
-        print(str(e))
-        return JsonResponse({'error': 'No forecast data found.'})
+		pairs = [list(a) for a in zip(fixed_dates_high_res, fixed_high_res_values)]
+		high_res_forecast = pd.DataFrame(pairs, columns=['Datetime', 'high_res (m3/s)'])
+		high_res_forecast.set_index('Datetime', inplace=True)
+
+		init_time = mean_forecast.index[0]
+
+		corrected_forecast_df = pd.concat(
+			[mean_forecast, max_forecast, mean_forecast, min_forecast, std_dev_lower_forecast, std_dev_upper_forecast,
+			 high_res_forecast], axis=1)
+
+		response = HttpResponse(content_type='text/csv')
+		response[
+			'Content-Disposition'] = 'attachment; filename=corrected_streamflow_forecast_{0}_{1}_{2}_{3}.csv'.format(
+			watershed, subbasin, comid, init_time)
+		corrected_forecast_df.to_csv(encoding='utf-8', header=True, path_or_buf=response)
+
+		return response
+
+	except Exception as e:
+		print(str(e))
+		return JsonResponse({'error': 'No forecast data found.'})
