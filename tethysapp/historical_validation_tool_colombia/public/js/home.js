@@ -1,4 +1,5 @@
 // Getting the csrf token
+console.log("Gio aqui");
 let csrftoken = Cookies.get('csrftoken');
 
 function csrfSafeMethod(method) {
