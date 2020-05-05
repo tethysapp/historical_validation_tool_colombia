@@ -40,7 +40,7 @@ class HistoricalValidationToolColombia(TethysAppBase):
                 controller='historical_validation_tool_colombia.controllers.get_simulated_data'
             ),
             UrlMap(
-                name='get_simulated__bc_data',
+                name='get_simulated_bc_data',
                 url='get-simulated-bc-data',
                 controller='historical_validation_tool_colombia.controllers.get_simulated_bc_data'
             ),

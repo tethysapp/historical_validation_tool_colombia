@@ -49,8 +49,7 @@ def get_discharge_data(request):
 		codEstacion = get_data['stationcode']
 		nomEstacion = get_data['stationname']
 
-		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-			codEstacion)
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
 
 		s = requests.get(url, verify=False).content
 
@@ -229,6 +228,7 @@ def get_simulated_bc_data(request):
 			data_year = simulated_df[simulated_df.index.year == int(year)]
 
 			for month in months:
+
 				data_month = data_year[data_year.index.month == int(month)]
 
 				# select a specific month for bias correction example
@@ -240,6 +240,7 @@ def get_simulated_bc_data(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -383,8 +384,7 @@ def get_hydrographs(request):
 
 		'''Get Observed Data'''
 
-		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-			codEstacion)
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
 
 		s = requests.get(url, verify=False).content
 
@@ -426,6 +426,7 @@ def get_hydrographs(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -615,6 +616,7 @@ def get_dailyAverages(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -809,6 +811,7 @@ def get_monthlyAverages(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -1004,6 +1007,7 @@ def get_scatterPlot(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -1239,6 +1243,7 @@ def get_scatterPlotLogScale(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -1448,6 +1453,7 @@ def get_volumeAnalysis(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -1661,6 +1667,7 @@ def volume_table_ajax(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -1907,6 +1914,7 @@ def make_table_ajax(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -2177,6 +2185,7 @@ def make_table_ajax2(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -2657,10 +2666,8 @@ def get_time_series_bc(request):
 		mean_forecast = pd.DataFrame(np.array(mean_values), columns=['streamflow (m3/s)'], index=dates)
 		max_forecast = pd.DataFrame(np.array(max_values), columns=['streamflow (m3/s)'], index=dates)
 		min_forecast = pd.DataFrame(np.array(min_values), columns=['streamflow (m3/s)'], index=dates)
-		std_dev_lower_forecast = pd.DataFrame(np.array(std_dev_lower_values), columns=['streamflow (m3/s)'],
-		                                      index=dates)
-		std_dev_upper_forecast = pd.DataFrame(np.array(std_dev_upper_values), columns=['streamflow (m3/s)'],
-		                                      index=dates)
+		std_dev_lower_forecast = pd.DataFrame(np.array(std_dev_lower_values), columns=['streamflow (m3/s)'], index=dates)
+		std_dev_upper_forecast = pd.DataFrame(np.array(std_dev_upper_values), columns=['streamflow (m3/s)'], index=dates)
 
 		high_res_forecast = pd.DataFrame(np.array(hres_values), columns=['streamflow (m3/s)'], index=hres_dates)
 
@@ -2673,6 +2680,7 @@ def get_time_series_bc(request):
 		monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 		# filter the observations to current month
 		monObs = observed_df[observed_df.index.month.isin([monIdx])]
+		monObs = monObs.dropna()
 
 		# get maximum value to bound histogram
 		obs_tempMax = np.max(monObs.max())
@@ -2893,7 +2901,7 @@ def get_observed_discharge_csv(request):
 
 		s = requests.get(url, verify=False).content
 
-		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0, skiprows=26)
+		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
 		df.index = pd.to_datetime(df.index)
 
 		datesObservedDischarge = df.index.tolist()
@@ -3059,6 +3067,7 @@ def get_simulated_bc_discharge_csv(request):
 				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 				# filter the observations to current month
 				monObs = observed_df[observed_df.index.month.isin([monIdx])]
+				monObs = monObs.dropna()
 
 				# get maximum value to bound histogram
 				obs_tempMax = np.max(monObs.max())
@@ -3346,6 +3355,7 @@ def get_forecast_bc_data_csv(request):
 		monData = simulated_df[simulated_df.index.month.isin([monIdx])]
 		# filter the observations to current month
 		monObs = observed_df[observed_df.index.month.isin([monIdx])]
+		monObs = monObs.dropna()
 
 		# get maximum value to bound histogram
 		obs_tempMax = np.max(monObs.max())
