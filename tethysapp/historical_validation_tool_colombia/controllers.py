@@ -19,6 +19,7 @@ from scipy import integrate
 from scipy import interpolate
 from functools import reduce
 import traceback
+import geoglows
 from csv import writer as csv_writer
 
 
@@ -100,29 +101,18 @@ def get_simulated_data(request):
 		codEstacion = get_data['stationcode']
 		nomEstacion = get_data['stationname']
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		'''Get Simulated Data'''
 
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
+
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		# ----------------------------------------------
 		# Chart Section
@@ -130,8 +120,8 @@ def get_simulated_data(request):
 
 		simulated_Q = go.Scatter(
 			name='Simulated Discharge',
-			x=era_dates,
-			y=era_values,
+			x=simulated_df.index,
+			y=simulated_df.iloc[:, 0].values,
 			line=dict(color='#ef553b')
 		)
 
@@ -168,31 +158,16 @@ def get_simulated_bc_data(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -215,9 +190,10 @@ def get_simulated_bc_data(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -356,31 +332,16 @@ def get_hydrographs(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -402,9 +363,10 @@ def get_hydrographs(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -545,31 +507,16 @@ def get_dailyAverages(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -592,9 +539,10 @@ def get_dailyAverages(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -740,31 +688,16 @@ def get_monthlyAverages(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -787,9 +720,10 @@ def get_monthlyAverages(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -936,31 +870,16 @@ def get_scatterPlot(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -983,9 +902,10 @@ def get_scatterPlot(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -1172,31 +1092,16 @@ def get_scatterPlotLogScale(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -1219,9 +1124,10 @@ def get_scatterPlotLogScale(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -1382,31 +1288,16 @@ def get_volumeAnalysis(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -1429,9 +1320,10 @@ def get_volumeAnalysis(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -1597,31 +1489,16 @@ def volume_table_ajax(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -1643,9 +1520,10 @@ def volume_table_ajax(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -1844,31 +1722,16 @@ def make_table_ajax(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -1890,9 +1753,10 @@ def make_table_ajax(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -2115,31 +1979,16 @@ def make_table_ajax2(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -2161,9 +2010,10 @@ def make_table_ajax2(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -2360,82 +2210,51 @@ def get_time_series(request):
 		watershed = get_data['watershed']
 		subbasin = get_data['subbasin']
 		comid = get_data['streamcomid']
-		if get_data['startdate'] != '':
-			startdate = get_data['startdate']
-		else:
-			startdate = 'most_recent'
 		units = 'metric'
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid,
-		                      forecast_folder=startdate, return_format='csv')
+		'''Get Forecasts'''
 
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetForecast/',
-		                   params=request_params, headers=request_headers)
-
-		pairs = res.content.splitlines()
-		header = pairs.pop(0)
-
-		dates = []
-		hres_dates = []
-
-		mean_values = []
-		hres_values = []
-		min_values = []
-		max_values = []
-		std_dev_lower_values = []
-		std_dev_upper_values = []
-
-		for pair in pairs:
-			pair = pair.decode('utf-8')
-			if b'high_res' in header:
-				hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-				hres_values.append(float(pair.split(',')[1]))
-
-				if 'nan' not in pair:
-					dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-					max_values.append(float(pair.split(',')[2]))
-					mean_values.append(float(pair.split(',')[3]))
-					min_values.append(float(pair.split(',')[4]))
-					std_dev_lower_values.append(float(pair.split(',')[5]))
-					std_dev_upper_values.append(float(pair.split(',')[6]))
-
-			else:
-				dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-				max_values.append(float(pair.split(',')[1]))
-				mean_values.append(float(pair.split(',')[2]))
-				min_values.append(float(pair.split(',')[3]))
-				std_dev_lower_values.append(float(pair.split(',')[4]))
-				std_dev_upper_values.append(float(pair.split(',')[5]))
+		forecast_df = geoglows.streamflow.forecast_stats(comid, return_format='csv')
 
 		# Removing Negative Values
-		mean_values2 = [0 if i < 0 else i for i in mean_values]
-		mean_values = mean_values2
-		hres_values2 = [0 if i < 0 else i for i in hres_values]
-		hres_values = hres_values2
-		min_values2 = [0 if i < 0 else i for i in min_values]
-		min_values = min_values2
-		max_values2 = [0 if i < 0 else i for i in max_values]
-		max_values = max_values2
-		std_dev_lower_values2 = [0 if i < 0 else i for i in std_dev_lower_values]
-		std_dev_lower_values = std_dev_lower_values2
-		std_dev_upper_values2 = [0 if i < 0 else i for i in std_dev_upper_values]
-		std_dev_upper_values = std_dev_upper_values2
+		forecast_df[forecast_df < 0] = 0
+
+		# Format dates
+		forecast_df.index = forecast_df.index.to_series().dt.strftime("%Y-%m-%d %H:%M:%S")
+		forecast_df.index = pd.to_datetime(forecast_df.index)
+
+		# Getting low resolution forecats
+		forecast_low_res = forecast_df.copy()
+		forecast_low_res.drop(['high_res (m^3/s)'], axis=1, inplace=True)
+		forecast_low_res = forecast_low_res.dropna()
+
+		# Getting high resolution forecats
+		forecast_high_res = forecast_df.copy()
+		forecast_high_res.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+		forecast_high_res = forecast_high_res.dropna()
+
+		# Getting forecast record
+		forecast_record = geoglows.streamflow.forecast_records(comid, return_format='csv')
 
 		# ----------------------------------------------
 		# Chart Section
 		# ----------------------------------------------
 
-		datetime_start = dates[0]
-		datetime_end = dates[-1]
+		old_series = go.Scatter(
+			name='Forecast Record',
+			x=forecast_record.index,
+			y=forecast_record.iloc[:, 0].values,
+			line=dict(
+				color='red',
+			)
+		)
 
 		avg_series = go.Scatter(
 			name='Mean',
-			x=dates,
-			y=mean_values,
+			x=forecast_low_res.index,
+			y=forecast_low_res.iloc[:, 0].values,
 			line=dict(
 				color='blue',
 			)
@@ -2443,8 +2262,8 @@ def get_time_series(request):
 
 		max_series = go.Scatter(
 			name='Max',
-			x=dates,
-			y=max_values,
+			x=forecast_low_res.index,
+			y=forecast_low_res.iloc[:, 4].values,
 			fill='tonexty',
 			mode='lines',
 			line=dict(
@@ -2455,8 +2274,8 @@ def get_time_series(request):
 
 		min_series = go.Scatter(
 			name='Min',
-			x=dates,
-			y=min_values,
+			x=forecast_low_res.index,
+			y=forecast_low_res.iloc[:, 3].values,
 			fill=None,
 			mode='lines',
 			line=dict(
@@ -2466,8 +2285,8 @@ def get_time_series(request):
 
 		std_dev_lower_series = go.Scatter(
 			name='Std. Dev. Lower',
-			x=dates,
-			y=std_dev_lower_values,
+			x=forecast_low_res.index,
+			y=forecast_low_res.iloc[:, 2].values,
 			fill='tonexty',
 			mode='lines',
 			line=dict(
@@ -2478,8 +2297,8 @@ def get_time_series(request):
 
 		std_dev_upper_series = go.Scatter(
 			name='Std. Dev. Upper',
-			x=dates,
-			y=std_dev_upper_values,
+			x=forecast_low_res.index,
+			y=forecast_low_res.iloc[:, 1].values,
 			fill='tonexty',
 			mode='lines',
 			line=dict(
@@ -2488,27 +2307,103 @@ def get_time_series(request):
 			)
 		)
 
-		plot_series = [min_series,
+		hres_series = go.Scatter(
+			name='HRES',
+			x=forecast_high_res.index,
+			y=forecast_high_res.iloc[:, 0].values,
+			line=dict(
+				color='black',
+			)
+		)
+
+		plot_series = [old_series,
+		               min_series,
 		               std_dev_lower_series,
 		               std_dev_upper_series,
 		               max_series,
-		               avg_series]
+		               avg_series,
+		               hres_series]
 
-		if hres_values:
-			plot_series.append(go.Scatter(
-				name='HRES',
-				x=hres_dates,
-				y=hres_values,
-				line=dict(
-					color='black',
-				)
-			))
+		# Getting real time observed data
+		url_rt = 'http://fews.ideam.gov.co/colombia/jsonQ/00' + codEstacion + 'Qobs.json'
+		f = requests.get(url_rt, verify=False)
 
-		try:
-			return_shapes, return_annotations = get_return_period_ploty_info(request, datetime_start, datetime_end)
-		except:
-			return_annotations = []
-			return_shapes = []
+
+		if f.status_code == 200:
+			data = f.json()
+
+			observedDischarge = (data.get('obs'))
+			sensorDischarge = (data.get('sen'))
+
+			observedDischarge = (observedDischarge.get('data'))
+			sensorDischarge = (sensorDischarge.get('data'))
+
+			datesObservedDischarge = [row[0] for row in observedDischarge]
+			observedDischarge = [row[1] for row in observedDischarge]
+
+			datesSensorDischarge = [row[0] for row in sensorDischarge]
+			sensorDischarge = [row[1] for row in sensorDischarge]
+
+			dates = []
+			discharge = []
+
+			for i in range(0, len(datesObservedDischarge) - 1):
+				year = int(datesObservedDischarge[i][0:4])
+				month = int(datesObservedDischarge[i][5:7])
+				day = int(datesObservedDischarge[i][8:10])
+				hh = int(datesObservedDischarge[i][11:13])
+				mm = int(datesObservedDischarge[i][14:16])
+				dates.append(dt.datetime(year, month, day, hh, mm))
+				discharge.append(observedDischarge[i])
+
+			datesObservedDischarge = dates
+			observedDischarge = discharge
+
+			dates = []
+			discharge = []
+
+			for i in range(0, len(datesSensorDischarge) - 1):
+				year = int(datesSensorDischarge[i][0:4])
+				month = int(datesSensorDischarge[i][5:7])
+				day = int(datesSensorDischarge[i][8:10])
+				hh = int(datesSensorDischarge[i][11:13])
+				mm = int(datesSensorDischarge[i][14:16])
+				dates.append(dt.datetime(year, month, day, hh, mm))
+				discharge.append(sensorDischarge[i])
+
+			datesSensorDischarge = dates
+			sensorDischarge = discharge
+
+			# convert request into pandas DF
+			pairs = [list(a) for a in zip(datesObservedDischarge, observedDischarge)]
+			observed_rt = pd.DataFrame(pairs, columns=['Datetime', 'Observed (m3/s)'])
+			observed_rt.set_index('Datetime', inplace=True)
+			observed_rt = observed_rt.iloc[(observed_rt.index >= forecast_record.index[0])]
+
+			if (len(observed_rt.index)>0):
+				plot_series.append(go.Scatter(
+					name='Observed Streamflow',
+					x=observed_rt.index,
+					y=observed_rt.iloc[:, 0].values,
+					line=dict(
+						color='green',
+					)
+				))
+
+			pairs = [list(a) for a in zip(datesSensorDischarge, sensorDischarge)]
+			sensor_rt = pd.DataFrame(pairs, columns=['Datetime', 'Sensor (m3/s)'])
+			sensor_rt.set_index('Datetime', inplace=True)
+			sensor_rt = sensor_rt.iloc[(sensor_rt.index >= forecast_record.index[0])]
+
+			if (len(sensor_rt.index)>0):
+				plot_series.append(go.Scatter(
+					name='Sensor Streamflow',
+					x=sensor_rt.index,
+					y=sensor_rt.iloc[:, 0].values,
+					line=dict(
+						color='yellow',
+					)
+				))
 
 		layout = go.Layout(
 			title="Forecast<br><sub>{0} ({1}): {2}</sub>".format(
@@ -2518,10 +2413,10 @@ def get_time_series(request):
 			),
 			yaxis=dict(
 				title='Streamflow ({}<sup>3</sup>/s)'.format(get_units_title(units)),
-				range=[0, max(max_values) + max(max_values) / 5]
+				range=[0, max(forecast_low_res.iloc[:, 4].values) + max(forecast_low_res.iloc[:, 4].values) / 5]
 			),
-			shapes=return_shapes,
-			annotations=return_annotations
+			#shapes=return_shapes,
+			#annotations=return_annotations
 		)
 
 		chart_obj = PlotlyView(
@@ -2547,41 +2442,22 @@ def get_time_series_bc(request):
 		watershed = get_data['watershed']
 		subbasin = get_data['subbasin']
 		comid = get_data['streamcomid']
-		if get_data['startdate'] != '':
-			startdate = get_data['startdate']
-		else:
-			startdate = 'most_recent'
 		units = 'metric'
 		codEstacion = get_data['stationcode']
 		nomEstacion = get_data['stationname']
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -2602,74 +2478,47 @@ def get_time_series_bc(request):
 
 		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-		'''Get Forecast'''
+		'''Get Forecasts'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid,
-		                      forecast_folder=startdate, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetForecast/',
-		                   params=request_params, headers=request_headers)
-
-		pairs = res.content.splitlines()
-		header = pairs.pop(0)
-
-		dates = []
-		hres_dates = []
-
-		mean_values = []
-		hres_values = []
-		min_values = []
-		max_values = []
-		std_dev_lower_values = []
-		std_dev_upper_values = []
-
-		for pair in pairs:
-			pair = pair.decode('utf-8')
-			if b'high_res' in header:
-				hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-				hres_values.append(float(pair.split(',')[1]))
-
-				if 'nan' not in pair:
-					dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-					max_values.append(float(pair.split(',')[2]))
-					mean_values.append(float(pair.split(',')[3]))
-					min_values.append(float(pair.split(',')[4]))
-					std_dev_lower_values.append(float(pair.split(',')[5]))
-					std_dev_upper_values.append(float(pair.split(',')[6]))
-
-			else:
-				dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-				max_values.append(float(pair.split(',')[1]))
-				mean_values.append(float(pair.split(',')[2]))
-				min_values.append(float(pair.split(',')[3]))
-				std_dev_lower_values.append(float(pair.split(',')[4]))
-				std_dev_upper_values.append(float(pair.split(',')[5]))
+		forecast_df = geoglows.streamflow.forecast_stats(comid, return_format='csv')
 
 		# Removing Negative Values
-		mean_values2 = [0 if i < 0 else i for i in mean_values]
-		mean_values = mean_values2
-		hres_values2 = [0 if i < 0 else i for i in hres_values]
-		hres_values = hres_values2
-		min_values2 = [0 if i < 0 else i for i in min_values]
-		min_values = min_values2
-		max_values2 = [0 if i < 0 else i for i in max_values]
-		max_values = max_values2
-		std_dev_lower_values2 = [0 if i < 0 else i for i in std_dev_lower_values]
-		std_dev_lower_values = std_dev_lower_values2
-		std_dev_upper_values2 = [0 if i < 0 else i for i in std_dev_upper_values]
-		std_dev_upper_values = std_dev_upper_values2
+		forecast_df[forecast_df < 0] = 0
 
-		mean_forecast = pd.DataFrame(np.array(mean_values), columns=['streamflow (m3/s)'], index=dates)
-		max_forecast = pd.DataFrame(np.array(max_values), columns=['streamflow (m3/s)'], index=dates)
-		min_forecast = pd.DataFrame(np.array(min_values), columns=['streamflow (m3/s)'], index=dates)
-		std_dev_lower_forecast = pd.DataFrame(np.array(std_dev_lower_values), columns=['streamflow (m3/s)'], index=dates)
-		std_dev_upper_forecast = pd.DataFrame(np.array(std_dev_upper_values), columns=['streamflow (m3/s)'], index=dates)
+		# Format dates
+		forecast_df.index = forecast_df.index.to_series().dt.strftime("%Y-%m-%d %H:%M:%S")
+		forecast_df.index = pd.to_datetime(forecast_df.index)
 
-		high_res_forecast = pd.DataFrame(np.array(hres_values), columns=['streamflow (m3/s)'], index=hres_dates)
+		# Getting low resolution forecats
+		forecast_low_res = forecast_df.copy()
+		forecast_low_res.drop(['high_res (m^3/s)'], axis=1, inplace=True)
+		forecast_low_res = forecast_low_res.dropna()
+
+		# Getting high resolution forecats
+		forecast_high_res = forecast_df.copy()
+		forecast_high_res.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+		forecast_high_res = forecast_high_res.dropna()
+
+		# Getting forecast record
+		forecast_record = geoglows.streamflow.forecast_records(comid, return_format='csv')
+
+		# Creating individual dataframes
+		mean_forecast = forecast_low_res.copy()
+		mean_forecast.drop(['std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		max_forecast = forecast_low_res.copy()
+		max_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)'], axis=1, inplace=True)
+
+		min_forecast = forecast_low_res.copy()
+		min_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		std_dev_lower_forecast = forecast_low_res.copy()
+		std_dev_lower_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		std_dev_upper_forecast = forecast_low_res.copy()
+		std_dev_upper_forecast.drop(['mean (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		high_res_forecast = forecast_high_res.copy()
 
 		'''Correct Forecast'''
 
@@ -2739,6 +2588,10 @@ def get_time_series_bc(request):
 		# interpolated function to convert simulated prob to observed streamflow
 		backout = interpolate.interp1d(obscdf, bin_edges_obs, fill_value="extrapolate")
 
+		# Fixing previous forecast
+		fixed_old_dates = forecast_record.index.to_list()
+		fixed_old_values = backout(f(forecast_record.iloc[:, 0].to_list()))
+
 		# Fixing the forecast
 		fixed_dates = mean_forecast.index.to_list()
 		fixed_mean_values = backout(f(mean_forecast.iloc[:, 0].to_list()))
@@ -2775,8 +2628,14 @@ def get_time_series_bc(request):
 		# Chart Section
 		# ----------------------------------------------
 
-		datetime_start = fixed_dates[0]
-		datetime_end = fixed_dates[-1]
+		old_series = go.Scatter(
+			name='Forecast Record',
+			x=fixed_old_dates,
+			y=fixed_old_values,
+			line=dict(
+				color='red',
+			)
+		)
 
 		avg_series = go.Scatter(
 			name='Mean',
@@ -2834,27 +2693,102 @@ def get_time_series_bc(request):
 			)
 		)
 
-		plot_series = [min_series,
+		hres_series = go.Scatter(
+			name='HRES',
+			x=fixed_dates_high_res,
+			y=fixed_high_res_values,
+			line=dict(
+				color='black',
+			)
+		)
+
+		plot_series = [old_series,
+		               min_series,
 		               std_dev_lower_series,
 		               std_dev_upper_series,
 		               max_series,
-		               avg_series]
+		               avg_series,
+		               hres_series]
 
-		if hres_values:
-			plot_series.append(go.Scatter(
-				name='HRES',
-				x=fixed_dates_high_res,
-				y=fixed_high_res_values,
-				line=dict(
-					color='black',
-				)
-			))
+		# Getting real time observed data
+		url_rt = 'http://fews.ideam.gov.co/colombia/jsonQ/00' + codEstacion + 'Qobs.json'
+		f = requests.get(url_rt, verify=False)
 
-		try:
-			return_shapes, return_annotations = get_return_period_ploty_info(request, datetime_start, datetime_end)
-		except:
-			return_annotations = []
-			return_shapes = []
+		if f.status_code == 200:
+			data = f.json()
+
+			observedDischarge = (data.get('obs'))
+			sensorDischarge = (data.get('sen'))
+
+			observedDischarge = (observedDischarge.get('data'))
+			sensorDischarge = (sensorDischarge.get('data'))
+
+			datesObservedDischarge = [row[0] for row in observedDischarge]
+			observedDischarge = [row[1] for row in observedDischarge]
+
+			datesSensorDischarge = [row[0] for row in sensorDischarge]
+			sensorDischarge = [row[1] for row in sensorDischarge]
+
+			dates = []
+			discharge = []
+
+			for i in range(0, len(datesObservedDischarge) - 1):
+				year = int(datesObservedDischarge[i][0:4])
+				month = int(datesObservedDischarge[i][5:7])
+				day = int(datesObservedDischarge[i][8:10])
+				hh = int(datesObservedDischarge[i][11:13])
+				mm = int(datesObservedDischarge[i][14:16])
+				dates.append(dt.datetime(year, month, day, hh, mm))
+				discharge.append(observedDischarge[i])
+
+			datesObservedDischarge = dates
+			observedDischarge = discharge
+
+			dates = []
+			discharge = []
+
+			for i in range(0, len(datesSensorDischarge) - 1):
+				year = int(datesSensorDischarge[i][0:4])
+				month = int(datesSensorDischarge[i][5:7])
+				day = int(datesSensorDischarge[i][8:10])
+				hh = int(datesSensorDischarge[i][11:13])
+				mm = int(datesSensorDischarge[i][14:16])
+				dates.append(dt.datetime(year, month, day, hh, mm))
+				discharge.append(sensorDischarge[i])
+
+			datesSensorDischarge = dates
+			sensorDischarge = discharge
+
+			# convert request into pandas DF
+			pairs = [list(a) for a in zip(datesObservedDischarge, observedDischarge)]
+			observed_rt = pd.DataFrame(pairs, columns=['Datetime', 'Observed (m3/s)'])
+			observed_rt.set_index('Datetime', inplace=True)
+			observed_rt = observed_rt.iloc[(observed_rt.index >= forecast_record.index[0])]
+
+			if (len(observed_rt.index) > 0):
+				plot_series.append(go.Scatter(
+					name='Observed Streamflow',
+					x=observed_rt.index,
+					y=observed_rt.iloc[:, 0].values,
+					line=dict(
+						color='green',
+					)
+				))
+
+			pairs = [list(a) for a in zip(datesSensorDischarge, sensorDischarge)]
+			sensor_rt = pd.DataFrame(pairs, columns=['Datetime', 'Sensor (m3/s)'])
+			sensor_rt.set_index('Datetime', inplace=True)
+			sensor_rt = sensor_rt.iloc[(sensor_rt.index >= forecast_record.index[0])]
+
+			if (len(sensor_rt.index) > 0):
+				plot_series.append(go.Scatter(
+					name='Sensor Streamflow',
+					x=sensor_rt.index,
+					y=sensor_rt.iloc[:, 0].values,
+					line=dict(
+						color='yellow',
+					)
+				))
 
 		layout = go.Layout(
 			title="Forecast<br><sub>{0} ({1}): {2}</sub>".format(
@@ -2864,10 +2798,10 @@ def get_time_series_bc(request):
 			),
 			yaxis=dict(
 				title='Streamflow ({}<sup>3</sup>/s)'.format(get_units_title(units)),
-				range=[0, max(max_values) + max(max_values) / 5]
+				range=[0, max(fixed_max_values) + max(fixed_max_values) / 5]
 			),
-			shapes=return_shapes,
-			annotations=return_annotations
+			#shapes=return_shapes,
+			#annotations=return_annotations
 		)
 
 		chart_obj = PlotlyView(
@@ -2939,31 +2873,20 @@ def get_simulated_discharge_csv(request):
 		codEstacion = get_data['stationcode']
 		nomEstacion = get_data['stationname']
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		'''Get Simulated Data'''
 
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		pairs = [list(a) for a in zip(era_dates, era_values)]
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
+
+		pairs = [list(a) for a in zip(simulated_df.index, simulated_df.iloc[:, 0])]
 
 		response = HttpResponse(content_type='text/csv')
 		response['Content-Disposition'] = 'attachment; filename=simulated_discharge_{0}.csv'.format(codEstacion)
@@ -2997,31 +2920,16 @@ def get_simulated_bc_discharge_csv(request):
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -3043,9 +2951,10 @@ def get_simulated_bc_discharge_csv(request):
 
 		'''Correct the Bias in Sumulation'''
 
-		years = ['1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992',
-		         '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005',
-		         '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014']
+		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
+		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
+		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
+		         '2018']
 
 		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -3169,38 +3078,53 @@ def get_forecast_data_csv(request):
 		watershed = get_data['watershed']
 		subbasin = get_data['subbasin']
 		comid = get_data['streamcomid']
-		if get_data['startdate'] != '':
-			startdate = get_data['startdate']
-		else:
-			startdate = 'most_recent'
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
+		'''Get Forecasts'''
 
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
+		forecast_df = geoglows.streamflow.forecast_stats(comid, return_format='csv')
 
-		res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetAvailableDates/',
-		                   params=request_params, headers=request_headers)
+		# Removing Negative Values
+		forecast_df[forecast_df < 0] = 0
 
-		qout_data = res.content.decode('utf-8').splitlines()
-		qout_data.pop(0)
+		# Format dates
+		forecast_df.index = forecast_df.index.to_series().dt.strftime("%Y-%m-%d %H:%M:%S")
+		forecast_df.index = pd.to_datetime(forecast_df.index)
 
-		init_time = qout_data[0].split(',')[0].split(' ')[0]
+		# Getting low resolution forecats
+		forecast_low_res = forecast_df.copy()
+		forecast_low_res.drop(['high_res (m^3/s)'], axis=1, inplace=True)
+		forecast_low_res = forecast_low_res.dropna()
+
+		# Getting high resolution forecats
+		forecast_high_res = forecast_df.copy()
+		forecast_high_res.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+		forecast_high_res = forecast_high_res.dropna()
+
+		# Creating individual dataframes
+		mean_forecast = forecast_low_res.copy()
+		mean_forecast.drop(['std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		max_forecast = forecast_low_res.copy()
+		max_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)'], axis=1, inplace=True)
+
+		min_forecast = forecast_low_res.copy()
+		min_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		std_dev_lower_forecast = forecast_low_res.copy()
+		std_dev_lower_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		std_dev_upper_forecast = forecast_low_res.copy()
+		std_dev_upper_forecast.drop(['mean (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		high_res_forecast = forecast_high_res.copy()
+
+		forecast_df2 = pd.concat([mean_forecast, max_forecast, min_forecast, std_dev_lower_forecast, std_dev_upper_forecast, high_res_forecast], axis=1)
+
 		response = HttpResponse(content_type='text/csv')
-		response['Content-Disposition'] = 'attachment; filename=streamflow_forecast_{0}_{1}_{2}_{3}.csv'.format(
-			watershed,
-			subbasin,
-			comid,
-			init_time)
-
-		writer = csv_writer(response)
-		writer.writerow(
-			['datetime', 'high_res (m3/s)', 'max (m3/s)', 'mean (m3/s)', 'min (m3/s)', 'std_dev_range_lower (m3/s)',
-			 'std_dev_range_upper (m3/s)'])
-
-		for row_data in qout_data:
-			writer.writerow(row_data.split(','))
+		response['Content-Disposition'] = 'attachment; filename=streamflow_forecast_{0}_{1}_{2}.csv'.format(watershed, subbasin, comid)
+		forecast_df2.to_csv(encoding='utf-8', header=True, path_or_buf=response)
 
 		return response
 
@@ -3220,41 +3144,22 @@ def get_forecast_bc_data_csv(request):
 		watershed = get_data['watershed']
 		subbasin = get_data['subbasin']
 		comid = get_data['streamcomid']
-		if get_data['startdate'] != '':
-			startdate = get_data['startdate']
-		else:
-			startdate = 'most_recent'
 		units = 'metric'
 		codEstacion = get_data['stationcode']
 		nomEstacion = get_data['stationname']
 
 		'''Get Simulated Data'''
 
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		era_res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetHistoricData/',
-		                       params=request_params, headers=request_headers)
-
-		era_pairs = era_res.content.splitlines()
-		era_pairs.pop(0)
-
-		era_dates = []
-		era_values = []
-
-		for era_pair in era_pairs:
-			era_pair = era_pair.decode('utf-8')
-			era_dates.append(dt.datetime.strptime(era_pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-			era_values.append(float(era_pair.split(',')[1]))
+		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 
 		# Removing Negative Values
-		era_values2 = [0 if i < 0 else i for i in era_values]
-		era_values = era_values2
+		simulated_df[simulated_df < 0] = 0
 
-		simulated_df = pd.DataFrame(data=era_values, index=era_dates, columns=['Simulated Streamflow'])
+		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
+
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+
+		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
 
@@ -3275,76 +3180,42 @@ def get_forecast_bc_data_csv(request):
 
 		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
-		'''Get Forecast'''
-
-		# request_params
-		request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid,
-		                      forecast_folder=startdate, return_format='csv')
-
-		# Token is for the demo account
-		request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-		res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetForecast/',
-		                   params=request_params, headers=request_headers)
-
-		pairs = res.content.splitlines()
-		header = pairs.pop(0)
-
-		dates = []
-		hres_dates = []
-
-		mean_values = []
-		hres_values = []
-		min_values = []
-		max_values = []
-		std_dev_lower_values = []
-		std_dev_upper_values = []
-
-		for pair in pairs:
-			pair = pair.decode('utf-8')
-			if b'high_res' in header:
-				hres_dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-				hres_values.append(float(pair.split(',')[1]))
-
-				if 'nan' not in pair:
-					dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-					max_values.append(float(pair.split(',')[2]))
-					mean_values.append(float(pair.split(',')[3]))
-					min_values.append(float(pair.split(',')[4]))
-					std_dev_lower_values.append(float(pair.split(',')[5]))
-					std_dev_upper_values.append(float(pair.split(',')[6]))
-
-			else:
-				dates.append(dt.datetime.strptime(pair.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-				max_values.append(float(pair.split(',')[1]))
-				mean_values.append(float(pair.split(',')[2]))
-				min_values.append(float(pair.split(',')[3]))
-				std_dev_lower_values.append(float(pair.split(',')[4]))
-				std_dev_upper_values.append(float(pair.split(',')[5]))
+		forecast_df = geoglows.streamflow.forecast_stats(comid, return_format = 'csv')
 
 		# Removing Negative Values
-		mean_values2 = [0 if i < 0 else i for i in mean_values]
-		mean_values = mean_values2
-		hres_values2 = [0 if i < 0 else i for i in hres_values]
-		hres_values = hres_values2
-		min_values2 = [0 if i < 0 else i for i in min_values]
-		min_values = min_values2
-		max_values2 = [0 if i < 0 else i for i in max_values]
-		max_values = max_values2
-		std_dev_lower_values2 = [0 if i < 0 else i for i in std_dev_lower_values]
-		std_dev_lower_values = std_dev_lower_values2
-		std_dev_upper_values2 = [0 if i < 0 else i for i in std_dev_upper_values]
-		std_dev_upper_values = std_dev_upper_values2
+		forecast_df[forecast_df < 0] = 0
 
-		mean_forecast = pd.DataFrame(np.array(mean_values), columns=['streamflow (m3/s)'], index=dates)
-		max_forecast = pd.DataFrame(np.array(max_values), columns=['streamflow (m3/s)'], index=dates)
-		min_forecast = pd.DataFrame(np.array(min_values), columns=['streamflow (m3/s)'], index=dates)
-		std_dev_lower_forecast = pd.DataFrame(np.array(std_dev_lower_values), columns=['streamflow (m3/s)'],
-		                                      index=dates)
-		std_dev_upper_forecast = pd.DataFrame(np.array(std_dev_upper_values), columns=['streamflow (m3/s)'],
-		                                      index=dates)
+		#Format dates
+		forecast_df.index = forecast_df.index.to_series().dt.strftime("%Y-%m-%d %H:%M:%S")
+		forecast_df.index = pd.to_datetime(forecast_df.index)
 
-		high_res_forecast = pd.DataFrame(np.array(hres_values), columns=['streamflow (m3/s)'], index=hres_dates)
+		#Getting low resolution forecats
+		forecast_low_res = forecast_df.copy()
+		forecast_low_res.drop(['high_res (m^3/s)'], axis=1, inplace=True)
+		forecast_low_res = forecast_low_res.dropna()
+
+		# Getting high resolution forecats
+		forecast_high_res = forecast_df.copy()
+		forecast_high_res.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+		forecast_high_res = forecast_high_res.dropna()
+
+		#Creating individual dataframes
+		mean_forecast = forecast_low_res.copy()
+		mean_forecast.drop(['std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		max_forecast = forecast_low_res.copy()
+		max_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)'], axis=1, inplace=True)
+
+		min_forecast = forecast_low_res.copy()
+		min_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		std_dev_lower_forecast = forecast_low_res.copy()
+		std_dev_lower_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		std_dev_upper_forecast = forecast_low_res.copy()
+		std_dev_upper_forecast.drop(['mean (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'], axis=1, inplace=True)
+
+		high_res_forecast = forecast_high_res.copy()
 
 		'''Correct Forecast'''
 
