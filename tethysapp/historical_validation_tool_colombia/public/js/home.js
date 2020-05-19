@@ -328,6 +328,48 @@ function get_hydrographs (watershed, subbasin, streamcomid, stationcode, station
                 	'yaxis.autorange': true
                 });
 
+                var params_obs = {
+                    stationcode: stationcode,
+                    stationname: stationname,
+                };
+
+                $('#submit-download-observed-discharge').attr({
+                    target: '_blank',
+                    href: 'get-observed-discharge-csv?' + jQuery.param(params_obs)
+                });
+
+                $('#download_observed_discharge').removeClass('hidden');
+
+                var params_sim = {
+                    watershed: watershed,
+                	subbasin: subbasin,
+                	streamcomid: streamcomid,
+                	stationcode:stationcode,
+                	stationname: stationname
+                };
+
+                $('#submit-download-simulated-discharge').attr({
+                    target: '_blank',
+                    href: 'get-simulated-discharge-csv?' + jQuery.param(params_sim)
+                });
+
+                $('#download_simulated_discharge').removeClass('hidden');
+
+                var params_sim_bc = {
+                    watershed: watershed,
+                	subbasin: subbasin,
+                	streamcomid: streamcomid,
+                	stationcode:stationcode,
+                	stationname: stationname
+                };
+
+                $('#submit-download-simulated-bc-discharge').attr({
+                    target: '_blank',
+                    href: 'get-simulated-bc-discharge-csv?' + jQuery.param(params_sim_bc)
+                });
+
+                $('#download_simulated_bc_discharge').removeClass('hidden');
+
            		 } else if (data.error) {
            		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
            		 	$('#info').removeClass('hidden');
@@ -729,6 +771,7 @@ function map_events() {
                         createVolumeTable(watershed, subbasin, streamcomid, stationcode, stationname);
                         get_time_series(watershed, subbasin, streamcomid, stationcode, stationname);
                         get_time_series_bc(watershed, subbasin, streamcomid, stationcode, stationname);
+                        makeDefaultTable(watershed, subbasin, streamcomid, stationcode, stationname);
                     }
                 });
             }
@@ -897,6 +940,20 @@ $('#metric_select2').on("select2:close", function(e) { // Display optional param
 });
 
 
+// THIS DELETE THE DUPLICATES IN THE ARRAY MERGE //
+function arrayUnique(array) {
+    var a = array.concat();
+    for(var i=0; i<a.length; ++i) {
+        for(var j=i+1; j<a.length; ++j) {
+            if(a[i] === a[j])
+                a.splice(j--, 1);
+        }
+    }
+
+    return a;
+}
+
+
 // Event handler for the make table button
 $(document).ready(function(){
 
@@ -920,7 +977,9 @@ $(document).ready(function(){
         let stationcode = arCode[1];
         let streamcomid = arComid[1];
 
+        let metrics_default = ["ME","RMSE","NRMSE (Mean)","MAPE","NSE","KGE (2009)", "KGE (2012)"];  // Default Metrics
         let selected_metrics = $( '#metric_select2' ).val();  // Selected Metrics
+        let selected_metric_joined = arrayUnique(metrics_default.concat(selected_metrics));
 		let additionalParametersNameList = ["mase_m", "dmod_j", "nse_mod_j", "h6_k_MHE", "h6_k_AHE", "h6_k_RMSHE", "lm_x_bar", "d1_p_x_bar"];
 		let additionalParametersValuesList = [];
 
@@ -930,7 +989,7 @@ $(document).ready(function(){
 			'streamcomid': streamcomid,
 			'stationcode': stationcode,
 			'stationname': stationname,
-			'metrics': selected_metrics,
+			'metrics': selected_metric_joined,
 		}
 
 		for (let i = 0; i < additionalParametersNameList.length; i++) {
@@ -962,130 +1021,47 @@ $(document).ready(function(){
 	});
 });
 
-// Function for the select4 metric selection tool
-$(document).ready(function() {
-    $('#metric_select4').select2({ width: 'resolve' });
-});
+function makeDefaultTable(watershed, subbasin, streamcomid, stationcode, stationname){
+  let selected_metrics = ["ME","RMSE","NRMSE (Mean)","MAPE","NSE","KGE (2009)", "KGE (2012)"];  // Selected Metrics
+  let additionalParametersNameList = ["mase_m", "dmod_j", "nse_mod_j", "h6_k_MHE", "h6_k_AHE", "h6_k_RMSHE", "lm_x_bar", "d1_p_x_bar"];
+  let additionalParametersValuesList = [];
 
+  let getData = {
+  'watershed': watershed,
+  'subbasin': subbasin,
+  'streamcomid': streamcomid,
+  'stationcode': stationcode,
+  'stationname': stationname,
+  'metrics': selected_metrics,
+  }
 
-$('#metric_select4').on("select2:close", function(e) { // Display optional parameters
-    //console.log("triggered!");
-    let select_val = $( '#metric_select4' ).val();
-	//console.log(select_val);
-
-    if ( select_val.includes("MASE") ) {
-        $('#mase_param_div2').fadeIn()
-    } else {
-        $('#mase_param_div2').fadeOut()
-    }
-
-    if ( select_val.includes("d (Mod.)") ) {
-        $('#dmod_param_div2').fadeIn()
-    } else {
-        $('#dmod_param_div2').fadeOut()
-    }
-
-    if ( select_val.includes("NSE (Mod.)") ) {
-        $('#nse_mod_param_div2').fadeIn()
-    } else {
-        $('#nse_mod_param_div2').fadeOut()
-    }
-
-    if ( select_val.includes("E1'") ) {
-        $('#lm_eff_param_div2').fadeIn()
-    } else {
-        $('#lm_eff_param_div2').fadeOut()
-    }
-
-    if ( select_val.includes("D1'") ) {
-        $('#d1_p_param_div2').fadeIn()
-    } else {
-        $('#d1_p_param_div2').fadeOut()
-    }
-
-    if ( select_val.includes("H6 (MHE)") ) {
-        $('#mean_h6_param_div2').fadeIn()
-    } else {
-        $('#mean_h6_param_div2').fadeOut()
-    }
-
-    if ( select_val.includes("H6 (MAHE)") ) {
-        $('#mean_abs_H6_param_div2').fadeIn()
-    } else {
-        $('#mean_abs_H6_param_div2').fadeOut()
-    }
-
-    if ( select_val.includes("H6 (RMSHE)") ) {
-        $('#rms_H6_param_div2').fadeIn()
-    } else {
-        $('#rms_H6_param_div2').fadeOut()
-    }
-});
-
-
-// Event handler for the make table button
-$(document).ready(function(){
-
-    $("#make-table2").click(function(){
-        //console.log('Make Table Event Triggered');
-        var model = $('#model option:selected').text();
-        var watershed = 'south_america' //OJO buscar como hacerla generica
-        var subbasin = 'continental' //OJO buscar como hacerla generica
-        var startdate = '';
-        let xName = $("#Station-Name-Tab")
-        let xCode = $("#Station-Code-Tab")
-        let xComid = $("#COMID-Tab")
-        let htmlName = xName.html()
-        let htmlCode = xCode.html()
-        let htmlComid = xComid.html()
-        var arName = htmlName.split(': ')
-        var arCode = htmlCode.split(': ')
-        var arComid = htmlComid.split(': ')
-        let stationname = arName[1];
-        let stationcode = arCode[1];
-        let streamcomid = arComid[1];
-
-        let selected_metrics = $( '#metric_select4' ).val();  // Selected Metrics
-		let additionalParametersNameList = ["mase_m", "dmod_j", "nse_mod_j", "h6_k_MHE", "h6_k_AHE", "h6_k_RMSHE", "lm_x_bar", "d1_p_x_bar"];
-		let additionalParametersValuesList = [];
-
-		let getData = {
-			'watershed': watershed,
-			'subbasin': subbasin,
-			'streamcomid': streamcomid,
-			'stationcode': stationcode,
-			'stationname': stationname,
-			'metrics': selected_metrics,
-		}
-
-		for (let i = 0; i < additionalParametersNameList.length; i++) {
-			metricAbbr = additionalParametersNameList[i];
-			getData[metricAbbr] = $(`#${metricAbbr}`).val();
-		}
-
-		// Creating the table
-		$.ajax({
-			url : "make-table-ajax2", // the endpoint
-			type : "GET", // http method
-			data: getData,
+  for (let i = 0; i < additionalParametersNameList.length; i++) {
+    metricAbbr = additionalParametersNameList[i];
+    getData[metricAbbr] = $(`#${metricAbbr}`).val();
+  }
+  //console.log(getData);
+  $.ajax({
+    url : "make-table-ajax", // the endpoint
+    type : "GET", // http method
+    data: getData,
 //			contentType : "json",
 
-			// handle a successful response
-			success : function(resp) {
-				$("#metric-table2").show();
-				$('#table2').html(resp); // Render the Table
-				//console.log(resp)
-				//console.log("success"); // another sanity check
-			},
+    // handle a successful response
+    success : function(resp) {
+      //console.log(resp);
+      $("#metric-table").show();
+      $('#table').html(resp); // Render the Table
+      //console.log(resp)
+      //console.log("success"); // another sanity check
+    },
 
-			// handle a non-successful response
-			error : function(xhr, errmsg, err) {
-				$('#table2').html("<div class='alert-box alert radius' data-alert>Oops! We have encountered an error: "+errmsg+".</div>"); // add the error to the dom
-				console.log(xhr.status + ": " + xhr.responseText); // provide a bit more info about the error to the console
-			}
-		});
-	});
-});
+    // handle a non-successful response
+    error : function(xhr, errmsg, err) {
+      $('#table').html("<div class='alert-box alert radius' data-alert>Oops! We have encountered an error: "+errmsg+".</div>"); // add the error to the dom
+      console.log(xhr.status + ": " + xhr.responseText); // provide a bit more info about the error to the console
+    }
+  });
+}
 
 function get_time_series(watershed, subbasin, streamcomid, stationcode, stationname) {
     $('#forecast-loading').removeClass('hidden');

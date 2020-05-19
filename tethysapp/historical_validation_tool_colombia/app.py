@@ -85,11 +85,6 @@ class HistoricalValidationToolColombia(TethysAppBase):
                 controller='historical_validation_tool_colombia.controllers.make_table_ajax'
             ),
             UrlMap(
-                name='make_table_ajax2',
-                url='make-table-ajax2',
-                controller='historical_validation_tool_colombia.controllers.make_table_ajax2'
-            ),
-            UrlMap(
                 name='get-time-series',
                 url='get-time-series',
                 controller='historical_validation_tool_colombia.controllers.get_time_series'),

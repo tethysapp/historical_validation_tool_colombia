@@ -467,11 +467,14 @@ def get_hydrographs(request):
 
 		'''Plotting Data'''
 
-		observed_Q = go.Scatter(x=merged_df.index, y=merged_df.iloc[:, 1].values, name='Observed', )
+		#observed_Q = go.Scatter(x=merged_df.index, y=merged_df.iloc[:, 1].values, name='Observed', )
+		observed_Q = go.Scatter(x=observed_df.index, y=observed_df.iloc[:, 0].values, name='Observed', )
 
-		simulated_Q = go.Scatter(x=merged_df.index, y=merged_df.iloc[:, 0].values, name='Simulated', )
+		#simulated_Q = go.Scatter(x=merged_df.index, y=merged_df.iloc[:, 0].values, name='Simulated', )
+		simulated_Q = go.Scatter(x=simulated_df.index, y=simulated_df.iloc[:, 0].values, name='Simulated', )
 
-		corrected_Q = go.Scatter(x=merged_df2.index, y=merged_df2.iloc[:, 0].values, name='Corrected Simulated', )
+		#corrected_Q = go.Scatter(x=merged_df2.index, y=merged_df2.iloc[:, 0].values, name='Corrected Simulated', )
+		corrected_Q = go.Scatter(x=corrected_df.index, y=corrected_df.iloc[:, 0].values, name='Corrected Simulated', )
 
 		layout = go.Layout(
 			title='Observed & Simulated Streamflow at <br> {0} - {1}'.format(codEstacion, nomEstacion),
@@ -1895,264 +1898,18 @@ def make_table_ajax(request):
 		table_html2 = table2.transpose()
 		table_html2 = table_html2.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
 
-		return HttpResponse(table_html)
-
-	except Exception:
-		traceback.print_exc()
-		return JsonResponse({'error': 'No data found for the selected station.'})
-
-
-def make_table_ajax2(request):
-	get_data = request.GET
-
-	try:
-		watershed = get_data['watershed']
-		subbasin = get_data['subbasin']
-		comid = get_data['streamcomid']
-		codEstacion = get_data['stationcode']
-		nomEstacion = get_data['stationname']
-
-		# Indexing the metrics to get the abbreviations
-		selected_metric_abbr = get_data.getlist("metrics[]", None)
-
-		# print(selected_metric_abbr)
-
-		# Retrive additional parameters if they exist
-		# Retrieving the extra optional parameters
-		extra_param_dict = {}
-
-		if request.GET.get('mase_m', None) is not None:
-			mase_m = float(request.GET.get('mase_m', None))
-			extra_param_dict['mase_m'] = mase_m
-		else:
-			mase_m = 1
-			extra_param_dict['mase_m'] = mase_m
-
-		if request.GET.get('dmod_j', None) is not None:
-			dmod_j = float(request.GET.get('dmod_j', None))
-			extra_param_dict['dmod_j'] = dmod_j
-		else:
-			dmod_j = 1
-			extra_param_dict['dmod_j'] = dmod_j
-
-		if request.GET.get('nse_mod_j', None) is not None:
-			nse_mod_j = float(request.GET.get('nse_mod_j', None))
-			extra_param_dict['nse_mod_j'] = nse_mod_j
-		else:
-			nse_mod_j = 1
-			extra_param_dict['nse_mod_j'] = nse_mod_j
-
-		if request.GET.get('h6_k_MHE', None) is not None:
-			h6_mhe_k = float(request.GET.get('h6_k_MHE', None))
-			extra_param_dict['h6_mhe_k'] = h6_mhe_k
-		else:
-			h6_mhe_k = 1
-			extra_param_dict['h6_mhe_k'] = h6_mhe_k
-
-		if request.GET.get('h6_k_AHE', None) is not None:
-			h6_ahe_k = float(request.GET.get('h6_k_AHE', None))
-			extra_param_dict['h6_ahe_k'] = h6_ahe_k
-		else:
-			h6_ahe_k = 1
-			extra_param_dict['h6_ahe_k'] = h6_ahe_k
-
-		if request.GET.get('h6_k_RMSHE', None) is not None:
-			h6_rmshe_k = float(request.GET.get('h6_k_RMSHE', None))
-			extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
-		else:
-			h6_rmshe_k = 1
-			extra_param_dict['h6_rmshe_k'] = h6_rmshe_k
-
-		if float(request.GET.get('lm_x_bar', None)) != 1:
-			lm_x_bar_p = float(request.GET.get('lm_x_bar', None))
-			extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
-		else:
-			lm_x_bar_p = None
-			extra_param_dict['lm_x_bar_p'] = lm_x_bar_p
-
-		if float(request.GET.get('d1_p_x_bar', None)) != 1:
-			d1_p_x_bar_p = float(request.GET.get('d1_p_x_bar', None))
-			extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
-		else:
-			d1_p_x_bar_p = None
-			extra_param_dict['d1_p_x_bar_p'] = d1_p_x_bar_p
-
-		'''Get Simulated Data'''
-
-		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
-
-		# Removing Negative Values
-		simulated_df[simulated_df < 0] = 0
-
-		simulated_df.index = simulated_df.index.to_series().dt.strftime("%Y-%m-%d")
-
-		simulated_df.index = pd.to_datetime(simulated_df.index)
-
-		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 1].values, index=simulated_df.index, columns=['Simulated Streamflow'])
-
-		'''Get Observed Data'''
-
-		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
-
-		s = requests.get(url, verify=False).content
-
-		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
-		df.index = pd.to_datetime(df.index)
-
-		datesDischarge = df.index.tolist()
-		dataDischarge = df.iloc[:, 0].values
-		dataDischarge.tolist()
-
-		if isinstance(dataDischarge[0], str):
-			dataDischarge = map(float, dataDischarge)
-
-		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
-
-		'''Correct the Bias in Sumulation'''
-
-		years = ['1979', '1980', '1981', '1982', '1983', '1984', '1985', '1986', '1987', '1988', '1989', '1990', '1991',
-		         '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004',
-		         '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017',
-		         '2018']
-
-		months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
-
-		dates = []
-		values = []
-
-		for year in years:
-			data_year = simulated_df[simulated_df.index.year == int(year)]
-
-			for month in months:
-				data_month = data_year[data_year.index.month == int(month)]
-
-				# select a specific month for bias correction example
-				# in this case we will use current month from forecast
-				iniDate = data_month.index[0]
-				monIdx = iniDate.month
-
-				# filter historic data to only be current month
-				monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-				# filter the observations to current month
-				monObs = observed_df[observed_df.index.month.isin([monIdx])]
-				monObs = monObs.dropna()
-
-				# get maximum value to bound histogram
-				obs_tempMax = np.max(monObs.max())
-				sim_tempMax = np.max(monData.max())
-				obs_tempMin = np.min(monObs.min())
-				sim_tempMin = np.min(monData.min())
-
-				obs_maxVal = math.ceil(obs_tempMax)
-				sim_maxVal = math.ceil(sim_tempMax)
-				obs_minVal = math.floor(obs_tempMin)
-				sim_minVal = math.floor(sim_tempMin)
-
-				n_elementos_obs = len(monObs.iloc[:, 0].values)
-				n_elementos_sim = len(monData.iloc[:, 0].values)
-
-				n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-				n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-				# specify the bin width for histogram (in m3/s)
-				step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-				step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-				# specify histogram bins
-				bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
-				bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
-
-				if (bins_obs[0] == 0):
-					bins_obs = np.concatenate((-bins_obs[1], bins_obs))
-				elif (bins_obs[0] > 0):
-					bins_obs = np.concatenate((-bins_obs[0], bins_obs))
-
-				if (bins_sim[0] >= 0):
-					bins_sim = np.concatenate((-bins_sim[1], bins_sim))
-				elif (bins_sim[0] > 0):
-					bins_sim = np.concatenate((-bins_sim[0], bins_sim))
-
-				# get the histograms
-				sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-				obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-				# adjust the bins to be the center
-				bin_edges_sim = bin_edges_sim[1:]
-				bin_edges_obs = bin_edges_obs[1:]
-
-				# normalize the histograms
-				sim_counts = sim_counts.astype(float) / monData.size
-				obs_counts = obs_counts.astype(float) / monObs.size
-
-				# calculate the cdfs
-				simcdf = np.cumsum(sim_counts)
-				obscdf = np.cumsum(obs_counts)
-
-				# interpolated function to convert simulated streamflow to prob
-				f = interpolate.interp1d(bin_edges_sim, simcdf)
-
-				# interpolated function to convert simulated prob to observed streamflow
-				backout = interpolate.interp1d(obscdf, bin_edges_obs)
-
-				date = data_month.index.to_list()
-				value = backout(f(data_month.iloc[:, 0].to_list()))
-				value = value.tolist()
-
-				dates.append(date)
-				values.append(value)
-
-		dates = reduce(lambda x, y: x + y, dates)
-		values = reduce(lambda x, y: x + y, values)
-
-		corrected_df = pd.DataFrame(data=values, index=dates, columns=['Corrected Simulated Streamflow'])
-
-		'''Merge Data'''
-
-		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
-
-		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
-
-		'''Plotting Data'''
-
-		# Creating the Table Based on User Input
-		table = hs.make_table(
-			merged_dataframe=merged_df,
-			metrics=selected_metric_abbr,
-			# remove_neg=remove_neg,
-			# remove_zero=remove_zero,
-			mase_m=extra_param_dict['mase_m'],
-			dmod_j=extra_param_dict['dmod_j'],
-			nse_mod_j=extra_param_dict['nse_mod_j'],
-			h6_mhe_k=extra_param_dict['h6_mhe_k'],
-			h6_ahe_k=extra_param_dict['h6_ahe_k'],
-			h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
-			d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
-			lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
-			# seasonal_periods=all_date_range_list
-		)
-		table_html = table.transpose()
-		table_html = table_html.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
-
-		# Creating the Table Based on User Input
-		table2 = hs.make_table(
-			merged_dataframe=merged_df2,
-			metrics=selected_metric_abbr,
-			# remove_neg=remove_neg,
-			# remove_zero=remove_zero,
-			mase_m=extra_param_dict['mase_m'],
-			dmod_j=extra_param_dict['dmod_j'],
-			nse_mod_j=extra_param_dict['nse_mod_j'],
-			h6_mhe_k=extra_param_dict['h6_mhe_k'],
-			h6_ahe_k=extra_param_dict['h6_ahe_k'],
-			h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
-			d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
-			lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
-			# seasonal_periods=all_date_range_list
-		)
+		table2 = table2.rename(index={'Full Time Series': 'Corrected Full Time Series'})
+		table = table.rename(index={'Full Time Series': 'Original Full Time Series'})
 		table_html2 = table2.transpose()
-		table_html2 = table_html2.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
+		table_html1 = table.transpose()
 
-		return HttpResponse(table_html2)
+		table_final = pd.merge(table_html1, table_html2, right_index=True, left_index=True)
+
+		table_html2 = table_html2.to_html(classes="table table-hover table-striped", table_id="corrected_1").replace('border="1"', 'border="0"')
+
+		table_final_html = table_final.to_html(classes="table table-hover table-striped", table_id="corrected_1").replace('border="1"', 'border="0"')
+
+		return HttpResponse(table_final_html)
 
 	except Exception:
 		traceback.print_exc()
