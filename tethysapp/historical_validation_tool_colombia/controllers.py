@@ -1939,41 +1939,6 @@ def get_units_title(unit_type):
         units_title = "ft"
     return units_title
 
-
-def get_available_dates(request):
-    get_data = request.GET
-
-    watershed = get_data['watershed']
-    subbasin = get_data['subbasin']
-    comid = get_data['streamcomid']
-
-    # request_params
-    request_params = dict(watershed_name=watershed, subbasin_name=subbasin, reach_id=comid)
-
-    # Token is for the demo account
-    request_headers = dict(Authorization='Token 1adf07d983552705cd86ac681f3717510b6937f6')
-
-    res = requests.get('https://tethys2.byu.edu/apps/streamflow-prediction-tool/api/GetAvailableDates/',
-                       params=request_params, headers=request_headers)
-
-    dates = []
-    for date in eval(res.content):
-        if len(date) == 10:
-            date_mod = date + '000'
-            date_f = dt.datetime.strptime(date_mod, '%Y%m%d.%H%M').strftime('%Y-%m-%d %H:%M')
-        else:
-            date_f = dt.datetime.strptime(date, '%Y%m%d.%H%M').strftime('%Y-%m-%d %H:%M')
-        dates.append([date_f, date, watershed, subbasin, comid])
-
-    dates.append(['Select Date', dates[-1][1]])
-    dates.reverse()
-
-    return JsonResponse({
-        "success": "Data analysis complete!",
-        "available_dates": json.dumps(dates)
-    })
-
-
 def get_time_series(request):
     get_data = request.GET
     try:
@@ -2048,7 +2013,9 @@ def get_time_series(request):
             observed_rt = pd.DataFrame(pairs, columns=['Datetime', 'Observed (m3/s)'])
             observed_rt.set_index('Datetime', inplace=True)
             observed_rt.index = observed_rt.index.tz_localize('UTC')
-            observed_rt = observed_rt.iloc[(observed_rt.index >= forecast_record.index[0])]
+            observed_rt = observed_rt[(observed_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=7)))]
+            observed_rt = observed_rt.groupby(observed_rt.index.strftime("%Y/%m/%d")).mean()
+            observed_rt.index = pd.to_datetime(observed_rt.index)
 
             if len(observed_rt.index) > 0:
                 hydroviewer_figure.add_trace(go.Scatter(
@@ -2064,7 +2031,9 @@ def get_time_series(request):
             sensor_rt = pd.DataFrame(pairs, columns=['Datetime', 'Sensor (m3/s)'])
             sensor_rt.set_index('Datetime', inplace=True)
             sensor_rt.index = sensor_rt.index.tz_localize('UTC')
-            sensor_rt = sensor_rt.iloc[(sensor_rt.index >= forecast_record.index[0])]
+            sensor_rt = sensor_rt.iloc[(sensor_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=7)))]
+            sensor_rt = sensor_rt.groupby(sensor_rt.index.strftime("%Y/%m/%d")).mean()
+            sensor_rt.index = pd.to_datetime(sensor_rt.index)
 
             if len(sensor_rt.index) > 0:
                 hydroviewer_figure.add_trace(go.Scatter(
@@ -2204,7 +2173,10 @@ def get_time_series_bc(request):
             pairs = [list(a) for a in zip(datesObservedDischarge, observedDischarge)]
             observed_rt = pd.DataFrame(pairs, columns=['Datetime', 'Observed (m3/s)'])
             observed_rt.set_index('Datetime', inplace=True)
-            observed_rt = observed_rt.iloc[(observed_rt.index >= forecast_record.index[0])]
+            observed_rt.index = observed_rt.index.tz_localize('UTC')
+            observed_rt = observed_rt[(observed_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=7)))]
+            observed_rt = observed_rt.groupby(observed_rt.index.strftime("%Y/%m/%d")).mean()
+            observed_rt.index = pd.to_datetime(observed_rt.index)
 
             if len(observed_rt.index) > 0:
                 hydroviewer_figure.add_trace(go.Scatter(
@@ -2219,7 +2191,10 @@ def get_time_series_bc(request):
             pairs = [list(a) for a in zip(datesSensorDischarge, sensorDischarge)]
             sensor_rt = pd.DataFrame(pairs, columns=['Datetime', 'Sensor (m3/s)'])
             sensor_rt.set_index('Datetime', inplace=True)
-            sensor_rt = sensor_rt.iloc[(sensor_rt.index >= forecast_record.index[0])]
+            sensor_rt.index = sensor_rt.index.tz_localize('UTC')
+            sensor_rt = sensor_rt.iloc[(sensor_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=7)))]
+            sensor_rt = sensor_rt.groupby(sensor_rt.index.strftime("%Y/%m/%d")).mean()
+            sensor_rt.index = pd.to_datetime(sensor_rt.index)
 
             if len(sensor_rt.index) > 0:
                 hydroviewer_figure.add_trace(go.Scatter(
