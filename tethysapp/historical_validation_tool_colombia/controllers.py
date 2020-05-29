@@ -2511,60 +2511,16 @@ def get_forecast_data_csv(request):
 		nomEstacion = get_data['stationname']
 
 		'''Get Forecasts'''
-
 		forecast_df = geoglows.streamflow.forecast_stats(comid, return_format='csv')
 
 		# Removing Negative Values
 		forecast_df[forecast_df < 0] = 0
 
-		# Format dates
-		forecast_df.index = forecast_df.index.to_series().dt.strftime("%Y-%m-%d %H:%M:%S")
-		forecast_df.index = pd.to_datetime(forecast_df.index)
-
-		# Getting low resolution forecats
-		forecast_low_res = forecast_df.copy()
-		forecast_low_res.drop(['high_res (m^3/s)'], axis=1, inplace=True)
-		forecast_low_res = forecast_low_res.dropna()
-
-		# Getting high resolution forecats
-		forecast_high_res = forecast_df.copy()
-		forecast_high_res.drop(
-			['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)',
-			 'max (m^3/s)'], axis=1, inplace=True)
-		forecast_high_res = forecast_high_res.dropna()
-
-		# Creating individual dataframes
-		mean_forecast = forecast_low_res.copy()
-		mean_forecast.drop(['std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'],
-						   axis=1, inplace=True)
-
-		max_forecast = forecast_low_res.copy()
-		max_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)'],
-						  axis=1, inplace=True)
-
-		min_forecast = forecast_low_res.copy()
-		min_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'max (m^3/s)'],
-						  axis=1, inplace=True)
-
-		std_dev_lower_forecast = forecast_low_res.copy()
-		std_dev_lower_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'],
-									axis=1, inplace=True)
-
-		std_dev_upper_forecast = forecast_low_res.copy()
-		std_dev_upper_forecast.drop(['mean (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'],
-									axis=1, inplace=True)
-
-		high_res_forecast = forecast_high_res.copy()
-
-		forecast_df2 = pd.concat(
-			[mean_forecast, max_forecast, min_forecast, std_dev_lower_forecast, std_dev_upper_forecast,
-			 high_res_forecast], axis=1)
-
 		response = HttpResponse(content_type='text/csv')
 		response['Content-Disposition'] = 'attachment; filename=streamflow_forecast_{0}_{1}_{2}.csv'.format(watershed,
 																											subbasin,
 																											comid)
-		forecast_df2.to_csv(encoding='utf-8', header=True, path_or_buf=response)
+		forecast_df.to_csv(encoding='utf-8', header=True, path_or_buf=response)
 
 		return response
 
@@ -2621,185 +2577,19 @@ def get_forecast_bc_data_csv(request):
 
 		observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
+		'''Get Forecasts'''
 		forecast_df = geoglows.streamflow.forecast_stats(comid, return_format='csv')
 
-		# Removing Negative Values
-		forecast_df[forecast_df < 0] = 0
-
-		# Format dates
-		forecast_df.index = forecast_df.index.to_series().dt.strftime("%Y-%m-%d %H:%M:%S")
-		forecast_df.index = pd.to_datetime(forecast_df.index)
-
-		# Getting low resolution forecats
-		forecast_low_res = forecast_df.copy()
-		forecast_low_res.drop(['high_res (m^3/s)'], axis=1, inplace=True)
-		forecast_low_res = forecast_low_res.dropna()
-
-		# Getting high resolution forecats
-		forecast_high_res = forecast_df.copy()
-		forecast_high_res.drop(
-			['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)',
-			 'max (m^3/s)'], axis=1, inplace=True)
-		forecast_high_res = forecast_high_res.dropna()
-
-		# Creating individual dataframes
-		mean_forecast = forecast_low_res.copy()
-		mean_forecast.drop(['std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'],
-						   axis=1, inplace=True)
-
-		max_forecast = forecast_low_res.copy()
-		max_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)'],
-						  axis=1, inplace=True)
-
-		min_forecast = forecast_low_res.copy()
-		min_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'std_dev_range_lower (m^3/s)', 'max (m^3/s)'],
-						  axis=1, inplace=True)
-
-		std_dev_lower_forecast = forecast_low_res.copy()
-		std_dev_lower_forecast.drop(['mean (m^3/s)', 'std_dev_range_upper (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'],
-									axis=1, inplace=True)
-
-		std_dev_upper_forecast = forecast_low_res.copy()
-		std_dev_upper_forecast.drop(['mean (m^3/s)', 'std_dev_range_lower (m^3/s)', 'min (m^3/s)', 'max (m^3/s)'],
-									axis=1, inplace=True)
-
-		high_res_forecast = forecast_high_res.copy()
 
 		'''Correct Forecast'''
-
-		iniDate = mean_forecast.index[0]
-		monIdx = iniDate.month
-
-		# filter historic data to only be current month
-		monData = simulated_df[simulated_df.index.month.isin([monIdx])]
-		# filter the observations to current month
-		monObs = observed_df[observed_df.index.month.isin([monIdx])]
-		monObs = monObs.dropna()
-
-		# get maximum value to bound histogram
-		obs_tempMax = np.max(monObs.max())
-		sim_tempMax = np.max(monData.max())
-		obs_tempMin = np.min(monObs.min())
-		sim_tempMin = np.min(monData.min())
-
-		obs_maxVal = math.ceil(obs_tempMax)
-		sim_maxVal = math.ceil(sim_tempMax)
-		obs_minVal = math.floor(obs_tempMin)
-		sim_minVal = math.floor(sim_tempMin)
-
-		n_elementos_obs = len(monObs.iloc[:, 0].values)
-		n_elementos_sim = len(monData.iloc[:, 0].values)
-
-		n_marcas_clase_obs = math.ceil(1 + (3.322 * math.log10(n_elementos_obs)))
-		n_marcas_clase_sim = math.ceil(1 + (3.322 * math.log10(n_elementos_sim)))
-
-		# specify the bin width for histogram (in m3/s)
-		step_obs = (obs_maxVal - obs_minVal) / n_marcas_clase_obs
-		step_sim = (sim_maxVal - sim_minVal) / n_marcas_clase_sim
-
-		# specify histogram bins
-		bins_obs = np.arange(-np.min(step_obs), obs_maxVal + 2 * np.min(step_obs), np.min(step_obs))
-		bins_sim = np.arange(-np.min(step_sim), sim_maxVal + 2 * np.min(step_sim), np.min(step_sim))
-
-		if (bins_obs[0] == 0):
-			bins_obs = np.concatenate((-bins_obs[1], bins_obs))
-		elif (bins_obs[0] > 0):
-			bins_obs = np.concatenate((-bins_obs[0], bins_obs))
-
-		if (bins_sim[0] >= 0):
-			bins_sim = np.concatenate((-bins_sim[1], bins_sim))
-		elif (bins_sim[0] > 0):
-			bins_sim = np.concatenate((-bins_sim[0], bins_sim))
-
-		# get the histograms
-		sim_counts, bin_edges_sim = np.histogram(monData, bins=bins_sim)
-		obs_counts, bin_edges_obs = np.histogram(monObs, bins=bins_obs)
-
-		# adjust the bins to be the center
-		bin_edges_sim = bin_edges_sim[1:]
-		bin_edges_obs = bin_edges_obs[1:]
-
-		# normalize the histograms
-		sim_counts = sim_counts.astype(float) / monData.size
-		obs_counts = obs_counts.astype(float) / monObs.size
-
-		# calculate the cdfs
-		simcdf = np.cumsum(sim_counts)
-		obscdf = np.cumsum(obs_counts)
-
-		# interpolated function to convert simulated streamflow to prob
-		f = interpolate.interp1d(bin_edges_sim, simcdf, fill_value="extrapolate")
-
-		# interpolated function to convert simulated prob to observed streamflow
-		backout = interpolate.interp1d(obscdf, bin_edges_obs, fill_value="extrapolate")
-
-		# Fixing the forecast
-		fixed_dates = mean_forecast.index.to_list()
-		fixed_mean_values = backout(f(mean_forecast.iloc[:, 0].to_list()))
-		fixed_mean_values = fixed_mean_values.tolist()
-		fixed_max_values = backout(f(max_forecast.iloc[:, 0].to_list()))
-		fixed_max_values = fixed_max_values.tolist()
-		fixed_min_values = backout(f(min_forecast.iloc[:, 0].to_list()))
-		fixed_min_values = fixed_min_values.tolist()
-		fixed_std_dev_lower_values = backout(f(std_dev_lower_forecast.iloc[:, 0].to_list()))
-		fixed_std_dev_lower_values = fixed_std_dev_lower_values.tolist()
-		fixed_std_dev_upper_values = backout(f(std_dev_upper_forecast.iloc[:, 0].to_list()))
-		fixed_std_dev_upper_values = fixed_std_dev_upper_values.tolist()
-
-		# Fixing the high-res forecast
-		fixed_dates_high_res = high_res_forecast.index.to_list()
-		fixed_high_res_values = backout(f(high_res_forecast.iloc[:, 0].to_list()))
-		fixed_high_res_values = fixed_high_res_values.tolist()
-
-		# Removing Negative Values
-		fixed_mean_values2 = [0 if i < 0 else i for i in fixed_mean_values]
-		fixed_mean_values = fixed_mean_values2
-		fixed_high_res_values2 = [0 if i < 0 else i for i in fixed_high_res_values]
-		fixed_high_res_values = fixed_high_res_values2
-		fixed_min_values2 = [0 if i < 0 else i for i in fixed_min_values]
-		fixed_min_values = fixed_min_values2
-		fixed_max_values2 = [0 if i < 0 else i for i in fixed_max_values]
-		fixed_max_values = fixed_max_values2
-		fixed_std_dev_lower_values2 = [0 if i < 0 else i for i in fixed_std_dev_lower_values]
-		fixed_std_dev_lower_values = fixed_std_dev_lower_values2
-		fixed_std_dev_upper_values2 = [0 if i < 0 else i for i in fixed_std_dev_upper_values]
-		fixed_std_dev_upper_values = fixed_std_dev_upper_values2
-
-		pairs = [list(a) for a in zip(fixed_dates, fixed_mean_values)]
-		mean_forecast = pd.DataFrame(pairs, columns=['Datetime', 'mean (m3/s)'])
-		mean_forecast.set_index('Datetime', inplace=True)
-
-		pairs = [list(a) for a in zip(fixed_dates, fixed_max_values)]
-		max_forecast = pd.DataFrame(pairs, columns=['Datetime', 'max (m3/s)'])
-		max_forecast.set_index('Datetime', inplace=True)
-
-		pairs = [list(a) for a in zip(fixed_dates, fixed_min_values)]
-		min_forecast = pd.DataFrame(pairs, columns=['Datetime', 'min (m3/s)'])
-		min_forecast.set_index('Datetime', inplace=True)
-
-		pairs = [list(a) for a in zip(fixed_dates, fixed_std_dev_lower_values)]
-		std_dev_lower_forecast = pd.DataFrame(pairs, columns=['Datetime', 'std_dev_range_lower (m3/s)'])
-		std_dev_lower_forecast.set_index('Datetime', inplace=True)
-
-		pairs = [list(a) for a in zip(fixed_dates, fixed_std_dev_upper_values)]
-		std_dev_upper_forecast = pd.DataFrame(pairs, columns=['Datetime', 'std_dev_range_upper (m3/s)'])
-		std_dev_upper_forecast.set_index('Datetime', inplace=True)
-
-		pairs = [list(a) for a in zip(fixed_dates_high_res, fixed_high_res_values)]
-		high_res_forecast = pd.DataFrame(pairs, columns=['Datetime', 'high_res (m3/s)'])
-		high_res_forecast.set_index('Datetime', inplace=True)
-
-		init_time = mean_forecast.index[0]
-
-		corrected_forecast_df = pd.concat(
-			[mean_forecast, max_forecast, mean_forecast, min_forecast, std_dev_lower_forecast, std_dev_upper_forecast,
-			 high_res_forecast], axis=1)
+		fixed_stats = geoglows.bias.correct_forecast_flows(forecast_df, simulated_df, observed_df)
 
 		response = HttpResponse(content_type='text/csv')
 		response[
-			'Content-Disposition'] = 'attachment; filename=corrected_streamflow_forecast_{0}_{1}_{2}_{3}.csv'.format(
-			watershed, subbasin, comid, init_time)
-		corrected_forecast_df.to_csv(encoding='utf-8', header=True, path_or_buf=response)
+			'Content-Disposition'] = 'attachment; filename=corrected_streamflow_forecast_{0}_{1}_{2}.csv'.format(
+			watershed, subbasin, comid)
+
+		fixed_stats.to_csv(encoding='utf-8', header=True, path_or_buf=response)
 
 		return response
 
