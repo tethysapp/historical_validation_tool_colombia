@@ -18,6 +18,6 @@ requirements:
 
   pip:
     - hydrostats
-    - geoglows>=0.17
+    - geoglows>=0.18.1
 
 post:
