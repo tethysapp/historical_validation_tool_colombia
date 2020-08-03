@@ -6,7 +6,7 @@ from tethys_apps.app_installation import custom_develop_command, custom_install_
 ### Apps Definition ###
 app_package = 'historical_validation_tool_colombia'
 release_package = 'tethysapp-' + app_package
-app_class = 'historical_validation_tool_australia.app:HistoricalValidationToolAustralia'
+app_class = 'historical_validation_tool_colombia.app:HistoricalValidationToolColombia'
 app_package_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tethysapp', app_package)
 
 ### Python Dependencies ###
