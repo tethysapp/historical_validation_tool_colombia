@@ -16,7 +16,6 @@ from django.shortcuts import render
 from scipy import integrate
 from tethys_sdk.gizmos import PlotlyView
 
-
 def home(request):
     """
     Controller for the app home page.
@@ -978,53 +977,53 @@ def make_table_ajax(request):
             dataDischarge = map(float, dataDischarge)
 
         observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
-
         '''Correct the Bias in Sumulation'''
 
         corrected_df = geoglows.bias.correct_historical(simulated_df, observed_df)
 
         '''Merge Data'''
         merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
-
         merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
 
         '''Plotting Data'''
 
         # Creating the Table Based on User Input
         table = hs.make_table(
-            merged_dataframe=merged_df,
-            metrics=selected_metric_abbr,
+            merged_dataframe = merged_df,
+            metrics = selected_metric_abbr,
             # remove_neg=remove_neg,
             # remove_zero=remove_zero,
-            mase_m=extra_param_dict['mase_m'],
-            dmod_j=extra_param_dict['dmod_j'],
-            nse_mod_j=extra_param_dict['nse_mod_j'],
-            h6_mhe_k=extra_param_dict['h6_mhe_k'],
-            h6_ahe_k=extra_param_dict['h6_ahe_k'],
-            h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
-            d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
-            lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
+            mase_m =  extra_param_dict['mase_m'],
+            dmod_j = extra_param_dict['dmod_j'],
+            nse_mod_j = extra_param_dict['nse_mod_j'],
+            h6_mhe_k = extra_param_dict['h6_mhe_k'],
+            h6_ahe_k = extra_param_dict['h6_ahe_k'],
+            h6_rmshe_k= extra_param_dict['h6_rmshe_k'],
+            d1_p_obs_bar_p= extra_param_dict['d1_p_x_bar_p'],
+            lm_x_obs_bar_p= extra_param_dict['lm_x_bar_p'],
             # seasonal_periods=all_date_range_list
         )
+        table = table.round(decimals=2)
         table_html = table.transpose()
         table_html = table_html.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
 
         # Creating the Table Based on User Input
         table2 = hs.make_table(
-            merged_dataframe=merged_df2,
-            metrics=selected_metric_abbr,
+            merged_dataframe = merged_df2,
+            metrics= selected_metric_abbr,
             # remove_neg=remove_neg,
             # remove_zero=remove_zero,
-            mase_m=extra_param_dict['mase_m'],
-            dmod_j=extra_param_dict['dmod_j'],
-            nse_mod_j=extra_param_dict['nse_mod_j'],
-            h6_mhe_k=extra_param_dict['h6_mhe_k'],
-            h6_ahe_k=extra_param_dict['h6_ahe_k'],
-            h6_rmshe_k=extra_param_dict['h6_rmshe_k'],
-            d1_p_obs_bar_p=extra_param_dict['d1_p_x_bar_p'],
-            lm_x_obs_bar_p=extra_param_dict['lm_x_bar_p'],
+            mase_m= extra_param_dict['mase_m'],
+            dmod_j= extra_param_dict['dmod_j'],
+            nse_mod_j= extra_param_dict['nse_mod_j'],
+            h6_mhe_k= extra_param_dict['h6_mhe_k'],
+            h6_ahe_k= extra_param_dict['h6_ahe_k'],
+            h6_rmshe_k= extra_param_dict['h6_rmshe_k'],
+            d1_p_obs_bar_p= extra_param_dict['d1_p_x_bar_p'],
+            lm_x_obs_bar_p= extra_param_dict['lm_x_bar_p'],
             # seasonal_periods=all_date_range_list
         )
+        table2 = table2.round(decimals =2)
         table_html2 = table2.transpose()
         table_html2 = table_html2.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
 
