@@ -1009,7 +1009,7 @@ def make_table_ajax(request):
 
         # Creating the Table Based on User Input
         table2 = hs.make_table(
-            merged_dataframe = np.round(merged_df2, decimals=2),
+            merged_dataframe = merged_df2,
             metrics= selected_metric_abbr,
             # remove_neg=remove_neg,
             # remove_zero=remove_zero,
