@@ -781,31 +781,7 @@ function map_events() {
 }
 
 
-
 function resize_graphs() {
-    $("#observedQ_tab_link").click(function() {
-        Plotly.Plots.resize($("#observed-chart-Q .js-plotly-plot")[0]);
-        Plotly.relayout($("#observed-chart-Q .js-plotly-plot")[0], {
-        	'xaxis.autorange': true,
-        	'yaxis.autorange': true
-        });
-    });
-    $("#simulatedQ_tab_link").click(function() {
-    	if (m_downloaded_historical_streamflow) {
-    		Plotly.Plots.resize($("#simulated-chart-Q .js-plotly-plot")[0]);
-    		Plotly.relayout($("#simulated-chart-Q .js-plotly-plot")[0], {
-        		'xaxis.autorange': true,
-        		'yaxis.autorange': true
-        	});
-    	}
-    });
-    $("#simulated_bc_Q_tab_link").click(function() {
-    	Plotly.Plots.resize($("#simulated-bc-chart-Q .js-plotly-plot")[0]);
-    	Plotly.relayout($("#simulated-bc-chart-Q .js-plotly-plot")[0], {
-        	'xaxis.autorange': true,
-        	'yaxis.autorange': true
-        });
-    });
     $("#hydrographs_tab_link").click(function() {
     	Plotly.Plots.resize($("#hydrographs-chart .js-plotly-plot")[0]);
     	Plotly.relayout($("#hydrographs-chart .js-plotly-plot")[0], {
@@ -813,49 +789,40 @@ function resize_graphs() {
         	'yaxis.autorange': true
         });
     });
-    $("#dailyAverages_tab_link").click(function() {
+    $("#visualAnalysis_tab_link").click(function() {
     	Plotly.Plots.resize($("#dailyAverages-chart .js-plotly-plot")[0]);
     	Plotly.relayout($("#dailyAverages-chart .js-plotly-plot")[0], {
         	'xaxis.autorange': true,
         	'yaxis.autorange': true
         });
-    });
-    $("#monthlyAverages_tab_link").click(function() {
-    	Plotly.Plots.resize($("#monthlyAverages-chart .js-plotly-plot")[0]);
+        Plotly.Plots.resize($("#monthlyAverages-chart .js-plotly-plot")[0]);
     	Plotly.relayout($("#monthlyAverages-chart .js-plotly-plot")[0], {
         	'xaxis.autorange': true,
         	'yaxis.autorange': true
         });
-    });
-    $("#scatterPlot_tab_link").click(function() {
-    	Plotly.Plots.resize($("#scatterPlot-chart .js-plotly-plot")[0]);
+        Plotly.Plots.resize($("#scatterPlot-chart .js-plotly-plot")[0]);
     	Plotly.relayout($("#scatterPlot-chart .js-plotly-plot")[0], {
         	'xaxis.autorange': true,
         	'yaxis.autorange': true
         });
-    });
-    $("#scatterPlotLogScale_tab_link").click(function() {
-    	Plotly.Plots.resize($("#scatterPlotLogScale-chart .js-plotly-plot")[0]);
+        Plotly.Plots.resize($("#scatterPlotLogScale-chart .js-plotly-plot")[0]);
     	Plotly.relayout($("#scatterPlotLogScale-chart .js-plotly-plot")[0], {
         	'xaxis.autorange': true,
         	'yaxis.autorange': true
         });
-    });
-    $("#volumeAnalysis_tab_link").click(function() {
-    	Plotly.Plots.resize($("#volumeAnalysis-chart .js-plotly-plot")[0]);
+        Plotly.Plots.resize($("#volumeAnalysis-chart .js-plotly-plot")[0]);
     	Plotly.relayout($("#volumeAnalysis-chart .js-plotly-plot")[0], {
         	'xaxis.autorange': true,
         	'yaxis.autorange': true
         });
     });
+
     $("#forecast_tab_link").click(function() {
         Plotly.Plots.resize($("#forecast-chart .js-plotly-plot")[0]);
         Plotly.relayout($("#forecast-chart .js-plotly-plot")[0], {
         	'xaxis.autorange': true,
         	'yaxis.autorange': true
         });
-    });
-    $("#forecast_bc_tab_link").click(function() {
         Plotly.Plots.resize($("#forecast-bc-chart .js-plotly-plot")[0]);
         Plotly.relayout($("#forecast-bc-chart .js-plotly-plot")[0], {
         	'xaxis.autorange': true,
@@ -964,6 +931,7 @@ $(document).ready(function(){
         //var subbasin = 'continental' //OJO buscar como hacerla generica
         var subbasin = 'geoglows' //OJO buscar como hacerla generica
         var startdate = '';
+        /*
         let xName = $("#Station-Name-Tab")
         let xCode = $("#Station-Code-Tab")
         let xComid = $("#COMID-Tab")
@@ -976,8 +944,9 @@ $(document).ready(function(){
         let stationname = arName[1];
         let stationcode = arCode[1];
         let streamcomid = arComid[1];
+        */
 
-        let metrics_default = ["ME","RMSE","NRMSE (Mean)","MAPE","NSE","KGE (2009)", "KGE (2012)"];  // Default Metrics
+        let metrics_default = ["ME","RMSE","NRMSE (Mean)","MAPE","NSE","KGE (2009)", "KGE (2012)", "R (Pearson)", "R (Spearman)", "r2"];  // Default Metrics
         let selected_metrics = $( '#metric_select2' ).val();  // Selected Metrics
         let selected_metric_joined = arrayUnique(metrics_default.concat(selected_metrics));
 		let additionalParametersNameList = ["mase_m", "dmod_j", "nse_mod_j", "h6_k_MHE", "h6_k_AHE", "h6_k_RMSHE", "lm_x_bar", "d1_p_x_bar"];
@@ -1022,7 +991,7 @@ $(document).ready(function(){
 });
 
 function makeDefaultTable(watershed, subbasin, streamcomid, stationcode, stationname){
-  let selected_metrics = ["ME","RMSE","NRMSE (Mean)","MAPE","NSE","KGE (2009)", "KGE (2012)"];  // Selected Metrics
+  let selected_metrics = ["ME","RMSE","NRMSE (Mean)","MAPE","NSE","KGE (2009)", "KGE (2012)", "R (Pearson)", "R (Spearman)", "r2"];  // Selected Metrics
   let additionalParametersNameList = ["mase_m", "dmod_j", "nse_mod_j", "h6_k_MHE", "h6_k_AHE", "h6_k_RMSHE", "lm_x_bar", "d1_p_x_bar"];
   let additionalParametersValuesList = [];
 
