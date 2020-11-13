@@ -4,9 +4,11 @@ import traceback
 from csv import writer as csv_writer
 
 import geoglows
+import math
 import hydrostats as hs
 import hydrostats.data as hd
 import pandas as pd
+import numpy as np
 import plotly.graph_objs as go
 import requests
 import scipy.stats as sp
@@ -1069,11 +1071,38 @@ def get_time_series(request):
         forecast_df = geoglows.streamflow.forecast_stats(comid, return_format='csv')
         # Removing Negative Values
         forecast_df[forecast_df < 0] = 0
-        # Getting forecast record
-        #forecast_record = geoglows.streamflow.forecast_records(comid, return_format='csv')
-        #forecast_ensembles = geoglows.streamflow.forecast_ensembles(comid)
-        #hydroviewer_figure = geoglows.plots.hydroviewer(forecast_record, forecast_df, forecast_ensembles)
         hydroviewer_figure = geoglows.plots.forecast_stats(stats=forecast_df, titles={'Station': nomEstacion + '-' + str(codEstacion), 'Reach ID': comid})
+
+        x_vals = (forecast_df.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[0])
+        max_visible = max(forecast_df.max())
+
+        '''Getting forecast record'''
+
+        try:
+            forecast_record = geoglows.streamflow.forecast_records(comid)
+            forecast_record[forecast_record < 0] = 0
+            forecast_record = forecast_record.loc[forecast_record.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=8))]
+
+            if len(forecast_record.index) > 0:
+                hydroviewer_figure.add_trace(go.Scatter(
+                    name='1st days forecasts',
+                    x=forecast_record.index,
+                    y=forecast_record.iloc[:, 0].values,
+                    line=dict(
+                        color='#FFA15A',
+                    )
+                ))
+
+            if 'x_vals' in locals():
+                x_vals = (forecast_record.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], forecast_record.index[0])
+            else:
+                x_vals = (forecast_record.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], forecast_record.index[0])
+
+            max_visible = max(forecast_record.max(), max_visible)
+
+        except:
+            print('There is no forecast record')
+
 
         '''Getting real time observed data'''
         url_rt = 'http://fews.ideam.gov.co/colombia/jsonQ/00' + codEstacion + 'Qobs.json'
@@ -1130,11 +1159,11 @@ def get_time_series(request):
                 observed_rt = pd.DataFrame(pairs, columns=['Datetime', 'Observed (m3/s)'])
                 observed_rt.set_index('Datetime', inplace=True)
                 observed_rt = observed_rt.dropna()
-                observed_rt = observed_rt.groupby(observed_rt.index.strftime("%Y/%m/%d")).mean()
+                #observed_rt = observed_rt.groupby(observed_rt.index.strftime("%Y/%m/%d")).mean()
                 observed_rt.index = pd.to_datetime(observed_rt.index)
                 observed_rt.index = observed_rt.index.tz_localize('UTC')
                 observed_rt = observed_rt.loc[
-                    observed_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=7))]
+                    observed_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=8))]
                 observed_rt = observed_rt.dropna()
 
                 if len(observed_rt.index) > 0:
@@ -1147,6 +1176,13 @@ def get_time_series(request):
                         )
                     ))
 
+                if 'forecast_record' in locals():
+                    x_vals = x_vals
+                else:
+                    x_vals = (observed_rt.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], observed_rt.index[0])
+
+                max_visible = max(observed_rt.max(), max_visible)
+
             except:
                 print('Not observed data for the selected station')
 
@@ -1156,11 +1192,11 @@ def get_time_series(request):
                 sensor_rt = pd.DataFrame(pairs, columns=['Datetime', 'Sensor (m3/s)'])
                 sensor_rt.set_index('Datetime', inplace=True)
                 sensor_rt = sensor_rt.dropna()
-                sensor_rt = sensor_rt.groupby(sensor_rt.index.strftime("%Y/%m/%d")).mean()
+                #sensor_rt = sensor_rt.groupby(sensor_rt.index.strftime("%Y/%m/%d")).mean()
                 sensor_rt.index = pd.to_datetime(sensor_rt.index)
                 sensor_rt.index = sensor_rt.index.tz_localize('UTC')
                 sensor_rt = sensor_rt.loc[
-                    sensor_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=7))]
+                    sensor_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=8))]
                 sensor_rt = sensor_rt.dropna()
 
                 if len(sensor_rt.index) > 0:
@@ -1173,8 +1209,71 @@ def get_time_series(request):
                         )
                     ))
 
+                if 'forecast_record' in locals():
+                    x_vals = x_vals
+                elif 'observed_rt' in locals():
+                    x_vals = x_vals
+                else:
+                    x_vals = (sensor_rt.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], sensor_rt.index[0])
+
+                max_visible = max(sensor_rt.max(), max_visible)
+
             except:
                 print('Not sensor data for the selected station')
+
+        '''Getting Return Periods'''
+        try:
+            rperiods = geoglows.streamflow.return_periods(comid)
+
+            r2 = int(rperiods.iloc[0]['return_period_2'])
+
+            colors = {
+                '2 Year': 'rgba(254, 240, 1, .4)',
+                '5 Year': 'rgba(253, 154, 1, .4)',
+                '10 Year': 'rgba(255, 56, 5, .4)',
+                '20 Year': 'rgba(128, 0, 246, .4)',
+                '25 Year': 'rgba(255, 0, 0, .4)',
+                '50 Year': 'rgba(128, 0, 106, .4)',
+                '100 Year': 'rgba(128, 0, 246, .4)',
+            }
+
+            if max_visible > r2:
+                visible = True
+                hydroviewer_figure.for_each_trace(
+                    lambda trace: trace.update(visible=True) if trace.name == "Maximum & Minimum Flow" else (),
+                )
+            else:
+                visible = 'legendonly'
+                hydroviewer_figure.for_each_trace(
+                    lambda trace: trace.update(visible=True) if trace.name == "Maximum & Minimum Flow" else (),
+                )
+
+            def template(name, y, color, fill='toself'):
+                return go.Scatter(
+                    name=name,
+                    x=x_vals,
+                    y=y,
+                    legendgroup='returnperiods',
+                    fill=fill,
+                    visible=visible,
+                    line=dict(color=color, width=0))
+
+            r5 = int(rperiods.iloc[0]['return_period_5'])
+            r10 = int(rperiods.iloc[0]['return_period_10'])
+            r25 = int(rperiods.iloc[0]['return_period_25'])
+            r50 = int(rperiods.iloc[0]['return_period_50'])
+            r100 = int(rperiods.iloc[0]['return_period_100'])
+
+            hydroviewer_figure.add_trace(template('Return Periods', (r100 * 0.05, r100 * 0.05, r100 * 0.05, r100 * 0.05), 'rgba(0,0,0,0)', fill='none'))
+            hydroviewer_figure.add_trace(template(f'2 Year: {r2}', (r2, r2, r5, r5), colors['2 Year']))
+            hydroviewer_figure.add_trace(template(f'5 Year: {r5}', (r5, r5, r10, r10), colors['5 Year']))
+            hydroviewer_figure.add_trace(template(f'10 Year: {r10}', (r10, r10, r25, r25), colors['10 Year']))
+            hydroviewer_figure.add_trace(template(f'25 Year: {r25}', (r25, r25, r50, r50), colors['25 Year']))
+            hydroviewer_figure.add_trace(template(f'50 Year: {r50}', (r50, r50, r100, r100), colors['50 Year']))
+            hydroviewer_figure.add_trace(template(f'100 Year: {r100}', (r100, r100, r100 + r100 * 0.05, r100 + r100 * 0.05),colors['100 Year']))
+
+        except:
+            print('There is no return periods for the desired stream')
 
         chart_obj = PlotlyView(hydroviewer_figure)
 
@@ -1233,6 +1332,10 @@ def get_time_series_bc(request):
 
         observed_df = pd.DataFrame(data=dataDischarge, index=datesDischarge, columns=['Observed Streamflow'])
 
+        '''Correct the Bias in Sumulation'''
+
+        corrected_df = geoglows.bias.correct_historical(simulated_df, observed_df)
+
         '''Get Forecasts'''
 
         forecast_df = geoglows.streamflow.forecast_stats(comid, return_format='csv')
@@ -1240,17 +1343,45 @@ def get_time_series_bc(request):
         # Removing Negative Values
         forecast_df[forecast_df < 0] = 0
 
-        # Getting forecast record
-        #forecast_record = geoglows.streamflow.forecast_records(comid, return_format='csv')
         #forecast_ensembles = geoglows.streamflow.forecast_ensembles(comid)
 
         '''Correct Forecast'''
         fixed_stats = geoglows.bias.correct_forecast(forecast_df, simulated_df, observed_df)
-        #fixed_records = geoglows.bias.correct_forecast(forecast_record, simulated_df, observed_df, use_month=-1)
         #fixed_ensembles = geoglows.bias.correct_forecast(forecast_ensembles, simulated_df, observed_df)
 
         #hydroviewer_figure = geoglows.plots.hydroviewer(fixed_records, fixed_stats, fixed_ensembles)
         hydroviewer_figure = geoglows.plots.forecast_stats(stats=fixed_stats, titles={'Station': nomEstacion + '-' + str(codEstacion), 'Reach ID': comid})
+
+        x_vals = (fixed_stats.index[0], fixed_stats.index[len(fixed_stats.index) - 1], fixed_stats.index[len(fixed_stats.index) - 1], fixed_stats.index[0])
+        max_visible = max(fixed_stats.max())
+
+        '''Getting forecast record'''
+
+        try:
+            forecast_record = geoglows.streamflow.forecast_records(comid)
+            forecast_record[forecast_record < 0] = 0
+            fixed_records = geoglows.bias.correct_forecast(forecast_record, simulated_df, observed_df, use_month=-1)
+            fixed_records = fixed_records.loc[fixed_records.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=8))]
+
+            if len(fixed_records.index) > 0:
+                hydroviewer_figure.add_trace(go.Scatter(
+                    name='1st days forecasts',
+                    x=fixed_records.index,
+                    y=fixed_records.iloc[:, 0].values,
+                    line=dict(
+                        color='#FFA15A',
+                    )
+                ))
+
+            if 'x_vals' in locals():
+                x_vals = (fixed_records.index[0], fixed_stats.index[len(fixed_stats.index) - 1], fixed_stats.index[len(fixed_stats.index) - 1], fixed_records.index[0])
+            else:
+                x_vals = (fixed_records.index[0], fixed_stats.index[len(fixed_stats.index) - 1], fixed_stats.index[len(fixed_stats.index) - 1], fixed_records.index[0])
+
+            max_visible = max(fixed_records.max(), max_visible)
+
+        except:
+            print('There is no forecast record')
 
         # Getting real time observed data
         url_rt = 'http://fews.ideam.gov.co/colombia/jsonQ/00' + codEstacion + 'Qobs.json'
@@ -1307,11 +1438,11 @@ def get_time_series_bc(request):
                 observed_rt = pd.DataFrame(pairs, columns=['Datetime', 'Observed (m3/s)'])
                 observed_rt.set_index('Datetime', inplace=True)
                 observed_rt = observed_rt.dropna()
-                observed_rt = observed_rt.groupby(observed_rt.index.strftime("%Y/%m/%d")).mean()
+                #observed_rt = observed_rt.groupby(observed_rt.index.strftime("%Y/%m/%d")).mean()
                 observed_rt.index = pd.to_datetime(observed_rt.index)
                 observed_rt.index = observed_rt.index.tz_localize('UTC')
                 observed_rt = observed_rt.loc[
-                    observed_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=7))]
+                    observed_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=8))]
                 observed_rt = observed_rt.dropna()
 
                 if len(observed_rt.index) > 0:
@@ -1324,6 +1455,13 @@ def get_time_series_bc(request):
                         )
                     ))
 
+                if 'fixed_records' in locals():
+                    x_vals = x_vals
+                else:
+                    x_vals = (observed_rt.index[0], fixed_stats.index[len(fixed_stats.index) - 1], fixed_stats.index[len(fixed_stats.index) - 1], observed_rt.index[0])
+
+                max_visible = max(observed_rt.max(), max_visible)
+
             except:
                 print('Not observed data for the selected station')
 
@@ -1333,11 +1471,11 @@ def get_time_series_bc(request):
                 sensor_rt = pd.DataFrame(pairs, columns=['Datetime', 'Sensor (m3/s)'])
                 sensor_rt.set_index('Datetime', inplace=True)
                 sensor_rt = sensor_rt.dropna()
-                sensor_rt = sensor_rt.groupby(sensor_rt.index.strftime("%Y/%m/%d")).mean()
+                #sensor_rt = sensor_rt.groupby(sensor_rt.index.strftime("%Y/%m/%d")).mean()
                 sensor_rt.index = pd.to_datetime(sensor_rt.index)
                 sensor_rt.index = sensor_rt.index.tz_localize('UTC')
                 sensor_rt = sensor_rt.loc[
-                    sensor_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=7))]
+                    sensor_rt.index >= pd.to_datetime(forecast_df.index[0] - dt.timedelta(days=8))]
                 sensor_rt = sensor_rt.dropna()
 
                 if len(sensor_rt.index) > 0:
@@ -1350,8 +1488,95 @@ def get_time_series_bc(request):
                         )
                     ))
 
+                if 'fixed_records' in locals():
+                    x_vals = x_vals
+                elif 'observed_rt' in locals():
+                    x_vals = x_vals
+                else:
+                    x_vals = (sensor_rt.index[0], fixed_stats.index[len(fixed_stats.index) - 1], fixed_stats.index[len(fixed_stats.index) - 1], sensor_rt.index[0])
+
+                max_visible = max(sensor_rt.max(), max_visible)
+
             except:
                 print('Not sensor data for the selected station')
+
+        '''Getting Return Periods'''
+        max_annual_flow = corrected_df.groupby(corrected_df.index.strftime("%Y")).max()
+        mean_value = np.mean(max_annual_flow.iloc[:,0].values)
+        std_value = np.std(max_annual_flow.iloc[:,0].values)
+
+        return_periods = [100, 50, 25, 10, 5, 2]
+
+        def gumbel_1(std: float, xbar: float, rp: int or float) -> float:
+            """
+            Solves the Gumbel Type I probability distribution function (pdf) = exp(-exp(-b)) where b is the covariate. Provide
+            the standard deviation and mean of the list of annual maximum flows. Compare scipy.stats.gumbel_r
+            Args:
+                std (float): the standard deviation of the series
+                xbar (float): the mean of the series
+                rp (int or float): the return period in years
+            Returns:
+                float, the flow corresponding to the return period specified
+            """
+            # xbar = statistics.mean(year_max_flow_list)
+            # std = statistics.stdev(year_max_flow_list, xbar=xbar)
+            return -math.log(-math.log(1 - (1 / rp))) * std * .7797 + xbar - (.45 * std)
+
+        return_periods_values = []
+
+        for rp in return_periods:
+            return_periods_values.append(gumbel_1(std_value, mean_value, rp))
+
+        d = {'rivid': [comid], 'return_period_100': [return_periods_values[0]], 'return_period_50': [return_periods_values[1]], 'return_period_25': [return_periods_values[2]], 'return_period_10': [return_periods_values[3]], 'return_period_5': [return_periods_values[4]], 'return_period_2': [return_periods_values[5]]}
+        rperiods = pd.DataFrame(data=d)
+        rperiods.set_index('rivid', inplace=True)
+
+        r2 = int(rperiods.iloc[0]['return_period_2'])
+
+        colors = {
+            '2 Year': 'rgba(254, 240, 1, .4)',
+            '5 Year': 'rgba(253, 154, 1, .4)',
+            '10 Year': 'rgba(255, 56, 5, .4)',
+            '20 Year': 'rgba(128, 0, 246, .4)',
+            '25 Year': 'rgba(255, 0, 0, .4)',
+            '50 Year': 'rgba(128, 0, 106, .4)',
+            '100 Year': 'rgba(128, 0, 246, .4)',
+        }
+
+        if max_visible > r2:
+            visible = True
+            hydroviewer_figure.for_each_trace(
+                lambda trace: trace.update(visible=True) if trace.name == "Maximum & Minimum Flow" else (),
+            )
+        else:
+            visible = 'legendonly'
+            hydroviewer_figure.for_each_trace(
+                lambda trace: trace.update(visible=True) if trace.name == "Maximum & Minimum Flow" else (),
+            )
+
+        def template(name, y, color, fill='toself'):
+            return go.Scatter(
+                name=name,
+                x=x_vals,
+                y=y,
+                legendgroup='returnperiods',
+                fill=fill,
+                visible=visible,
+                line=dict(color=color, width=0))
+
+        r5 = int(rperiods.iloc[0]['return_period_5'])
+        r10 = int(rperiods.iloc[0]['return_period_10'])
+        r25 = int(rperiods.iloc[0]['return_period_25'])
+        r50 = int(rperiods.iloc[0]['return_period_50'])
+        r100 = int(rperiods.iloc[0]['return_period_100'])
+
+        hydroviewer_figure.add_trace(template('Return Periods', (r100 * 0.05, r100 * 0.05, r100 * 0.05, r100 * 0.05), 'rgba(0,0,0,0)', fill='none'))
+        hydroviewer_figure.add_trace(template(f'2 Year: {r2}', (r2, r2, r5, r5), colors['2 Year']))
+        hydroviewer_figure.add_trace(template(f'5 Year: {r5}', (r5, r5, r10, r10), colors['5 Year']))
+        hydroviewer_figure.add_trace(template(f'10 Year: {r10}', (r10, r10, r25, r25), colors['10 Year']))
+        hydroviewer_figure.add_trace(template(f'25 Year: {r25}', (r25, r25, r50, r50), colors['25 Year']))
+        hydroviewer_figure.add_trace(template(f'50 Year: {r50}', (r50, r50, r100, r100), colors['50 Year']))
+        hydroviewer_figure.add_trace(template(f'100 Year: {r100}', (r100, r100, r100 + r100 * 0.05, r100 + r100 * 0.05), colors['100 Year']))
 
         chart_obj = PlotlyView(hydroviewer_figure)
 
