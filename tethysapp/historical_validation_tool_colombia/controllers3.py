@@ -27,9 +27,18 @@ comid = 'none'
 codEstacion = 'none'
 nomEstacion = 'none'
 s = None
-simulated_df = pd.DataFrame({'A' : []})
-observed_df = pd.DataFrame({'A' : []})
-corrected_df = pd.DataFrame({'A' : []})
+#simulated_df = pd.DataFrame({'A' : []})
+simulated_df = pd.DataFrame([(dt.datetime(1900, 1, 1, 0, 0), 0)], columns=['Datetime', 'Simulated Streamflow'])
+simulated_df.set_index('Datetime', inplace=True)
+print(simulated_df)
+#observed_df = pd.DataFrame({'A' : []})
+observed_df = pd.DataFrame([(dt.datetime(1900, 1, 1, 0, 0), 0)], columns=['Datetime', 'Observed Streamflow'])
+observed_df.set_index('Datetime', inplace=True)
+print(observed_df)
+#corrected_df = pd.DataFrame({'A' : []})
+corrected_df = pd.DataFrame([(dt.datetime(1900, 1, 1, 0, 0), 0)], columns=['Datetime', 'Corrected Simulated'])
+corrected_df.set_index('Datetime', inplace=True)
+print(corrected_df)
 forecast_df =pd.DataFrame({'A' : []})
 fixed_stats = None
 forecast_record = None
@@ -699,21 +708,26 @@ def get_time_series(request):
 		x_vals = (forecast_df.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[0])
 		max_visible = max(forecast_df.max())
 
-		if len(forecast_record.index) > 0:
-			hydroviewer_figure.add_trace(go.Scatter(
-				name='1st days forecasts',
-				x=forecast_record.index,
-				y=forecast_record.iloc[:, 0].values,
-				line=dict(
-					color='#FFA15A',
-				)
-			))
+		try:
 
-		if 'x_vals' in locals():
-			x_vals = (forecast_record.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], forecast_record.index[0])
-		else:
-			x_vals = (forecast_record.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], forecast_record.index[0])
-			max_visible = max(forecast_record.max(), max_visible)
+			if len(forecast_record.index) > 0:
+				hydroviewer_figure.add_trace(go.Scatter(
+					name='1st days forecasts',
+					x=forecast_record.index,
+					y=forecast_record.iloc[:, 0].values,
+					line=dict(
+						color='#FFA15A',
+					)
+				))
+
+			if 'x_vals' in locals():
+				x_vals = (forecast_record.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], forecast_record.index[0])
+			else:
+				x_vals = (forecast_record.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], forecast_record.index[0])
+				max_visible = max(forecast_record.max(), max_visible)
+
+		except:
+			print('Not observed data for the selected station')
 
 		'''Getting real time observed data'''
 		url_rt = 'http://fews.ideam.gov.co/colombia/jsonQ/00' + codEstacion + 'Qobs.json'
@@ -879,7 +893,7 @@ def get_time_series(request):
 			hydroviewer_figure.add_trace(template(f'10 Year: {r10}', (r10, r10, r25, r25), colors['10 Year']))
 			hydroviewer_figure.add_trace(template(f'25 Year: {r25}', (r25, r25, r50, r50), colors['25 Year']))
 			hydroviewer_figure.add_trace(template(f'50 Year: {r50}', (r50, r50, r100, r100), colors['50 Year']))
-			hydroviewer_figure.add_trace(template(f'100 Year: {r100}', (r100, r100, r100 + r100 * 0.05, r100 + r100 * 0.05),colors['100 Year']))
+			hydroviewer_figure.add_trace(template(f'100 Year: {r100}', (r100, r100, max(r100 + r100 * 0.05, max_visible), max(r100 + r100 * 0.05, max_visible)),colors['100 Year']))
 
 		except:
 			print('There is no return periods for the desired stream')
@@ -1132,7 +1146,7 @@ def get_time_series_bc(request):
 		hydroviewer_figure.add_trace(template(f'10 Year: {r10}', (r10, r10, r25, r25), colors['10 Year']))
 		hydroviewer_figure.add_trace(template(f'25 Year: {r25}', (r25, r25, r50, r50), colors['25 Year']))
 		hydroviewer_figure.add_trace(template(f'50 Year: {r50}', (r50, r50, r100, r100), colors['50 Year']))
-		hydroviewer_figure.add_trace(template(f'100 Year: {r100}', (r100, r100, r100 + r100 * 0.05, r100 + r100 * 0.05), colors['100 Year']))
+		hydroviewer_figure.add_trace(template(f'100 Year: {r100}', (r100, r100, max(r100 + r100 * 0.05, max_visible), max(r100 + r100 * 0.05, max_visible)), colors['100 Year']))
 
 		chart_obj = PlotlyView(hydroviewer_figure)
 
