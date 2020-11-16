@@ -21,6 +21,16 @@ function get_requestData (watershed, subbasin, streamcomid, stationcode, station
       },
       success: function (data) {
         console.log(data)
+        get_hydrographs (watershed, subbasin, streamcomid, stationcode, stationname)
+        get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
+        get_monthlyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
+        get_scatterPlot (watershed, subbasin, streamcomid, stationcode, stationname);
+        get_scatterPlotLogScale (watershed, subbasin, streamcomid, stationcode, stationname);
+        get_volumeAnalysis (watershed, subbasin, streamcomid, stationcode, stationname);
+        createVolumeTable(watershed, subbasin, streamcomid, stationcode, stationname);
+        makeDefaultTable(watershed, subbasin, streamcomid, stationcode, stationname);
+        get_time_series(watershed, subbasin, streamcomid, stationcode, stationname);
+        get_time_series_bc(watershed, subbasin, streamcomid, stationcode, stationname);
       }
   })
 
@@ -599,18 +609,18 @@ function map_events() {
                         			+ stationcode + '</h3><h5 id="COMID-Tab">Station COMID: '
                         			+ streamcomid+ '</h5><h5>Stream: '+ stream);
                         get_requestData(watershed, subbasin, streamcomid, stationcode, stationname);
-                        setTimeout(function(){
-                            get_hydrographs (watershed, subbasin, streamcomid, stationcode, stationname)
-                            get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
-                            get_monthlyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
-                            get_scatterPlot (watershed, subbasin, streamcomid, stationcode, stationname);
-                            get_scatterPlotLogScale (watershed, subbasin, streamcomid, stationcode, stationname);
-                            get_volumeAnalysis (watershed, subbasin, streamcomid, stationcode, stationname);
-                            createVolumeTable(watershed, subbasin, streamcomid, stationcode, stationname);
-                            makeDefaultTable(watershed, subbasin, streamcomid, stationcode, stationname);
-                            get_time_series(watershed, subbasin, streamcomid, stationcode, stationname);
-                            get_time_series_bc(watershed, subbasin, streamcomid, stationcode, stationname);
-                        },15000)
+                        // setTimeout(function(){
+                        //     get_hydrographs (watershed, subbasin, streamcomid, stationcode, stationname)
+                        //     get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
+                        //     get_monthlyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
+                        //     get_scatterPlot (watershed, subbasin, streamcomid, stationcode, stationname);
+                        //     get_scatterPlotLogScale (watershed, subbasin, streamcomid, stationcode, stationname);
+                        //     get_volumeAnalysis (watershed, subbasin, streamcomid, stationcode, stationname);
+                        //     createVolumeTable(watershed, subbasin, streamcomid, stationcode, stationname);
+                        //     makeDefaultTable(watershed, subbasin, streamcomid, stationcode, stationname);
+                        //     get_time_series(watershed, subbasin, streamcomid, stationcode, stationname);
+                        //     get_time_series_bc(watershed, subbasin, streamcomid, stationcode, stationname);
+                        // },15000)
                     }
                 });
             }
