@@ -28,14 +28,8 @@ codEstacion = 'none'
 nomEstacion = 'none'
 s = None
 simulated_df = pd.DataFrame({'A' : []})
-#simulated_df = pd.DataFrame([(dt.datetime(1900, 1, 1, 0, 0), 0)], columns=['Datetime', 'Simulated Streamflow'])
-#simulated_df.set_index('Datetime', inplace=True)
 observed_df = pd.DataFrame({'A' : []})
-#observed_df = pd.DataFrame([(dt.datetime(1900, 1, 1, 0, 0), 0)], columns=['Datetime', 'Observed Streamflow'])
-#observed_df.set_index('Datetime', inplace=True)
 corrected_df = pd.DataFrame({'A' : []})
-#corrected_df = pd.DataFrame([(dt.datetime(1900, 1, 1, 0, 0), 0)], columns=['Datetime', 'Corrected Simulated'])
-#corrected_df.set_index('Datetime', inplace=True)
 forecast_df =pd.DataFrame({'A' : []})
 fixed_stats = None
 forecast_record = None
@@ -242,6 +236,9 @@ def get_monthlyAverages(request):
 	global corrected_df
 
 	try:
+
+		'''Merge Data'''
+
 		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
 
 		merged_df2 = hd.merge_data(sim_df=corrected_df, obs_df=observed_df)
@@ -704,6 +701,8 @@ def get_time_series(request):
 		x_vals = (forecast_df.index[0], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[len(forecast_df.index) - 1], forecast_df.index[0])
 		max_visible = max(forecast_df.max())
 
+		'''Getting forecast record'''
+
 		try:
 
 			if len(forecast_record.index) > 0:
@@ -841,6 +840,7 @@ def get_time_series(request):
 				print('Not sensor data for the selected station')
 
 		'''Getting Return Periods'''
+
 		try:
 			rperiods = geoglows.streamflow.return_periods(comid)
 
@@ -1180,7 +1180,7 @@ def get_observed_discharge_csv(request):
 		response['Content-Disposition'] = 'attachment; filename=observed_discharge_{0}.csv'.format(codEstacion)
 
 		writer = csv_writer(response)
-		writer.writerow(['datetime', 'Streamflow (m3/s)'])
+		writer.writerow(['datetime', 'Observed Streamflow (m3/s)'])
 
 		for row_data in pairs:
 			writer.writerow(row_data)
@@ -1210,7 +1210,7 @@ def get_simulated_discharge_csv(request):
 		response['Content-Disposition'] = 'attachment; filename=simulated_discharge_{0}.csv'.format(codEstacion)
 
 		writer = csv_writer(response)
-		writer.writerow(['datetime', 'Streamflow (m3/s)'])
+		writer.writerow(['datetime', 'Simulated Streamflow (m3/s)'])
 
 		for row_data in pairs:
 			writer.writerow(row_data)
