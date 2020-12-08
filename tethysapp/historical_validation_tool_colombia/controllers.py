@@ -50,7 +50,6 @@ def home(request):
 
 	return render(request, 'historical_validation_tool_colombia/home.html', context)
 
-
 def get_popup_response(request):
 	"""
 	Get simulated data from api
