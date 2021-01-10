@@ -21,7 +21,7 @@ function get_requestData (watershed, subbasin, streamcomid, stationcode, station
       },
       success: function (data) {
         console.log(data)
-        get_hydrographs (watershed, subbasin, streamcomid, stationcode, stationname)
+        get_hydrographs (watershed, subbasin, streamcomid, stationcode, stationname);
         get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
         get_monthlyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
         get_scatterPlot (watershed, subbasin, streamcomid, stationcode, stationname);
@@ -561,9 +561,6 @@ function map_events() {
 
 			if (wms_url) {
 				$("#obsgraph").modal('show');
-				$('#observed-chart-Q').addClass('hidden');
-				$('#simulated-chart-Q').addClass('hidden');
-				$('#simulated-bc-chart-Q').addClass('hidden');
 				$('#hydrographs-chart').addClass('hidden');
 				$('#dailyAverages-chart').addClass('hidden');
 				$('#monthlyAverages-chart').addClass('hidden');
@@ -572,9 +569,6 @@ function map_events() {
 				$('#volumeAnalysis-chart').addClass('hidden');
 				$('#forecast-chart').addClass('hidden');
 				$('#forecast-bc-chart').addClass('hidden');
-				$('#observed-loading-Q').removeClass('hidden');
-				$('#simulated-loading-Q').removeClass('hidden');
-				$('#simulated-bc-loading-Q').removeClass('hidden');
 				$('#hydrographs-loading').removeClass('hidden');
 				$('#dailyAverages-loading').removeClass('hidden');
 				$('#monthlyAverages-loading').removeClass('hidden');
@@ -607,7 +601,7 @@ function map_events() {
 		         		$("#station-info").append('<h3 id="Station-Name-Tab">Current Station: '+ stationname
                         			+ '</h3><h5 id="Station-Code-Tab">Station Code: '
                         			+ stationcode + '</h3><h5 id="COMID-Tab">Station COMID: '
-                        			+ streamcomid+ '</h5><h5>Stream: '+ stream);
+                        			+ streamcomid+ '</h5><h5>Stream: '+ stream + '</h5>');
                         get_requestData(watershed, subbasin, streamcomid, stationcode, stationname);
                     }
                 });

@@ -27,9 +27,12 @@ comid = 'none'
 codEstacion = 'none'
 nomEstacion = 'none'
 s = None
-simulated_df = pd.DataFrame({'A' : []})
-observed_df = pd.DataFrame({'A' : []})
-corrected_df = pd.DataFrame({'A' : []})
+simulated_df = pd.DataFrame([(dt.datetime(1980, 1, 1, 0, 0), 0)], columns=['Datetime', 'Simulated Streamflow'])
+simulated_df.set_index('Datetime', inplace=True)
+observed_df = pd.DataFrame([(dt.datetime(1980, 1, 1, 0, 0), 0)], columns=['Datetime', 'Simulated Streamflow'])
+observed_df.set_index('Datetime', inplace=True)
+corrected_df = pd.DataFrame([(dt.datetime(1980, 1, 1, 0, 0), 0)], columns=['Datetime', 'Simulated Streamflow'])
+corrected_df.set_index('Datetime', inplace=True)
 forecast_df =pd.DataFrame({'A' : []})
 fixed_stats = None
 forecast_record = None
@@ -52,7 +55,7 @@ def home(request):
 
 def get_popup_response(request):
 	"""
-	Get simulated data from api
+	get station attributes
 	"""
 	get_data = request.GET
 	return_obj = {}
@@ -70,6 +73,23 @@ def get_popup_response(request):
 	global fixed_stats
 	global forecast_record
 	global fixed_records
+
+	watershed = 'none'
+	subbasin = 'none'
+	comid = 'none'
+	codEstacion = 'none'
+	nomEstacion = 'none'
+	s = None
+	simulated_df = pd.DataFrame([(dt.datetime(1980, 1, 1, 0, 0), 0)], columns=['Datetime', 'Simulated Streamflow'])
+	simulated_df.set_index('Datetime', inplace=True)
+	observed_df = pd.DataFrame([(dt.datetime(1980, 1, 1, 0, 0), 0)], columns=['Datetime', 'Simulated Streamflow'])
+	observed_df.set_index('Datetime', inplace=True)
+	corrected_df = pd.DataFrame([(dt.datetime(1980, 1, 1, 0, 0), 0)], columns=['Datetime', 'Simulated Streamflow'])
+	corrected_df.set_index('Datetime', inplace=True)
+	forecast_df = pd.DataFrame({'A': []})
+	fixed_stats = None
+	forecast_record = None
+	fixed_records = None
 
 	try:
 		#get station attributes
@@ -949,7 +969,7 @@ def get_time_series_bc(request):
 		except:
 			print('There is no forecast record')
 
-		# Getting real time observed data
+		'''Getting real time observed data'''
 		url_rt = 'http://fews.ideam.gov.co/colombia/jsonQ/00' + codEstacion + 'Qobs.json'
 		f = requests.get(url_rt, verify=False)
 
