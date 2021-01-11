@@ -99,7 +99,7 @@ def get_popup_response(request):
 		codEstacion = get_data['stationcode']
 		nomEstacion = get_data['stationname']
 
-		# get Simulated Streamflow
+		'''Get Simulated Data'''
 		simulated_df = geoglows.streamflow.historic_simulation(comid, forcing='era_5', return_format='csv')
 		# Removing Negative Values
 		simulated_df[simulated_df < 0] = 0
