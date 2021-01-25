@@ -18,7 +18,6 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from scipy import integrate
 from tethys_sdk.gizmos import PlotlyView
-import numpy as np
 
 ## global values ##
 watershed = 'none'
@@ -307,6 +306,7 @@ def get_scatterPlot(request):
 	global corrected_df
 
 	try:
+
 		'''Merge Data'''
 
 		merged_df = hd.merge_data(sim_df=simulated_df, obs_df=observed_df)
@@ -674,7 +674,7 @@ def make_table_ajax(request):
 			lm_x_obs_bar_p= extra_param_dict['lm_x_bar_p'],
 			# seasonal_periods=all_date_range_list
 		)
-		table2 = table2.round(decimals =2)
+		table2 = table2.round(decimals=2)
 		table_html2 = table2.transpose()
 		table_html2 = table_html2.to_html(classes="table table-hover table-striped").replace('border="1"', 'border="0"')
 
