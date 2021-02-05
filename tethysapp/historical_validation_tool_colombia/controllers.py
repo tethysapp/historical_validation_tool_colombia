@@ -107,8 +107,7 @@ def get_popup_response(request):
 		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 0].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
-		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(
-			codEstacion)
+		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
 		s = requests.get(url, verify=False).content
 		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
 		df.index = pd.to_datetime(df.index)
@@ -924,7 +923,6 @@ def get_time_series(request):
 	except Exception as e:
 		print(str(e))
 		return JsonResponse({'error': 'No data found for the selected reach.'})
-
 
 
 def get_time_series_bc(request):
