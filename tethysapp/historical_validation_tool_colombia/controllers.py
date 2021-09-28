@@ -9,15 +9,21 @@ import hydrostats as hs
 import hydrostats.data as hd
 import pandas as pd
 import numpy as np
-
-import plotly.graph_objs as go
 import requests
+import os
+import json
+import plotly.graph_objs as go
 import scipy.stats as sp
 from HydroErr.HydroErr import metric_names, metric_abbr
+
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from scipy import integrate
-from tethys_sdk.gizmos import PlotlyView
+from tethys_sdk.gizmos import *
+
+import time
+from hs_restclient import HydroShare, HydroShareAuthBasic
+from .app import HistoricalValidationToolColombia as app
 
 ## global values ##
 watershed = 'none'
@@ -46,8 +52,67 @@ def home(request):
 	# List of Metrics to include in context
 	metric_loop_list = list(zip(metric_names, metric_abbr))
 
+	# Retrieve a geoserver engine and geoserver credentials.
+	geoserver_engine = app.get_spatial_dataset_service(
+		name='main_geoserver', as_engine=True)
+
+	geos_username = geoserver_engine.username
+	geos_password = geoserver_engine.password
+	my_geoserver = geoserver_engine.endpoint.replace('rest', '')
+
+	geoserver_base_url = my_geoserver
+	geoserver_workspace = app.get_custom_setting('workspace')
+	region = app.get_custom_setting('region')
+	geoserver_endpoint = TextInput(display_text='',
+								   initial=json.dumps([geoserver_base_url, geoserver_workspace, region]),
+								   name='geoserver_endpoint',
+								   disabled=True)
+
+	# Available Forecast Dates
+	res = requests.get('https://geoglows.ecmwf.int/api/AvailableDates/?region=central_america-geoglows', verify=False)
+	data = res.json()
+	dates_array = (data.get('available_dates'))
+
+	dates = []
+
+	for date in dates_array:
+		if len(date) == 10:
+			date_mod = date + '000'
+			date_f = dt.datetime.strptime(date_mod, '%Y%m%d.%H%M').strftime('%Y-%m-%d %H:%M')
+		else:
+			date_f = dt.datetime.strptime(date, '%Y%m%d.%H%M').strftime('%Y-%m-%d')
+			date = date[:-3]
+		dates.append([date_f, date])
+		dates = sorted(dates)
+
+	dates.append(['Select Date', dates[-1][1]])
+	dates.reverse()
+
+	# Date Picker Options
+	date_picker = DatePicker(name='datesSelect',
+							 display_text='Date',
+							 autoclose=True,
+							 format='yyyy-mm-dd',
+							 start_date=dates[-1][0],
+							 end_date=dates[1][0],
+							 start_view='month',
+							 today_button=True,
+							 initial='')
+
+	region_index = json.load(open(os.path.join(os.path.dirname(__file__), 'public', 'geojson', 'index.json')))
+	regions = SelectInput(
+		display_text='Zoom to a Region:',
+		name='regions',
+		multiple=False,
+		original=True,
+		options=[(region_index[opt]['name'], opt) for opt in region_index]
+	)
+
 	context = {
-		"metric_loop_list": metric_loop_list
+		"metric_loop_list": metric_loop_list,
+		"geoserver_endpoint": geoserver_endpoint,
+		"date_picker": date_picker,
+		"regions": regions
 	}
 
 	return render(request, 'historical_validation_tool_colombia/home.html', context)
@@ -56,6 +121,8 @@ def get_popup_response(request):
 	"""
 	get station attributes
 	"""
+	start_time = time.time()
+
 	get_data = request.GET
 	return_obj = {}
 
@@ -107,7 +174,12 @@ def get_popup_response(request):
 		simulated_df = pd.DataFrame(data=simulated_df.iloc[:, 0].values, index=simulated_df.index, columns=['Simulated Streamflow'])
 
 		'''Get Observed Data'''
-		url = 'https://www.hydroshare.org/resource/d222676fbd984a81911761ca1ba936bf/data/contents/Discharge_Data/{0}.csv'.format(codEstacion)
+		auth = HydroShareAuthBasic(username=app.get_custom_setting('username'), password=app.get_custom_setting('password'))
+		hs = HydroShare(auth=auth)
+		resource_id = app.get_custom_setting('hydroshare_resource_id')
+		hs.setAccessRules(resource_id, public=True)
+
+		url = 'https://www.hydroshare.org/resource/{0}/data/contents/Discharge_Data/{1}.csv'.format(resource_id, codEstacion)
 		s = requests.get(url, verify=False).content
 		df = pd.read_csv(io.StringIO(s.decode('utf-8')), index_col=0)
 		df.index = pd.to_datetime(df.index)
@@ -146,11 +218,15 @@ def get_popup_response(request):
 			print('There is no forecast record')
 
 		print("finished get_popup_response")
+
+		print("--- %s seconds getpopup ---" % (time.time() - start_time))
+
 		return JsonResponse({})
 
 	except Exception as e:
 		print(str(e))
 		return JsonResponse({'error': 'No data found for the selected station.'})
+
 
 def get_hydrographs(request):
 	"""
@@ -163,6 +239,8 @@ def get_hydrographs(request):
 	global simulated_df
 	global observed_df
 	global corrected_df
+
+	start_time = time.time()
 
 	try:
 
@@ -182,6 +260,8 @@ def get_hydrographs(request):
 			'gizmo_object': chart_obj,
 		}
 
+		print("--- %s seconds hydrographs ---" % (time.time() - start_time))
+
 		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
 
 	except Exception as e:
@@ -200,6 +280,8 @@ def get_dailyAverages(request):
 	global simulated_df
 	global observed_df
 	global corrected_df
+
+	start_time = time.time()
 
 	try:
 
@@ -233,6 +315,8 @@ def get_dailyAverages(request):
 			'gizmo_object': chart_obj,
 		}
 
+		print("--- %s seconds dailyAverages ---" % (time.time() - start_time))
+
 		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
 
 	except Exception as e:
@@ -251,6 +335,8 @@ def get_monthlyAverages(request):
 	global simulated_df
 	global observed_df
 	global corrected_df
+
+	start_time = time.time()
 
 	try:
 
@@ -285,6 +371,8 @@ def get_monthlyAverages(request):
 			'gizmo_object': chart_obj,
 		}
 
+		print("--- %s seconds monthlyAverages ---" % (time.time() - start_time))
+
 		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
 
 	except Exception as e:
@@ -303,6 +391,8 @@ def get_scatterPlot(request):
 	global simulated_df
 	global observed_df
 	global corrected_df
+
+	start_time = time.time()
 
 	try:
 
@@ -377,6 +467,8 @@ def get_scatterPlot(request):
 			'gizmo_object': chart_obj,
 		}
 
+		print("--- %s seconds scatterPlot ---" % (time.time() - start_time))
+
 		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
 
 	except Exception as e:
@@ -395,6 +487,8 @@ def get_scatterPlotLogScale(request):
 	global simulated_df
 	global observed_df
 	global corrected_df
+
+	start_time = time.time()
 
 	try:
 		'''Merge Data'''
@@ -442,6 +536,8 @@ def get_scatterPlotLogScale(request):
 			'gizmo_object': chart_obj,
 		}
 
+		print("--- %s seconds scatterPlot_log ---" % (time.time() - start_time))
+
 		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
 
 	except Exception as e:
@@ -460,6 +556,8 @@ def get_volumeAnalysis(request):
 	global simulated_df
 	global observed_df
 	global corrected_df
+
+	start_time = time.time()
 
 	try:
 		'''Merge Data'''
@@ -510,6 +608,8 @@ def get_volumeAnalysis(request):
 
 		chart_obj = PlotlyView(go.Figure(data=[observed_volume, simulated_volume, corrected_volume], layout=layout))
 
+		print("--- %s seconds volumeAnalysis ---" % (time.time() - start_time))
+
 		context = {
 			'gizmo_object': chart_obj,
 		}
@@ -528,6 +628,8 @@ def volume_table_ajax(request):
 	global simulated_df
 	global observed_df
 	global corrected_df
+
+	start_time = time.time()
 
 	try:
 
@@ -553,6 +655,8 @@ def volume_table_ajax(request):
 			"corr_volume": corr_volume,
 		}
 
+		print("--- %s seconds volumeAnalysis_table ---" % (time.time() - start_time))
+
 		return JsonResponse(resp)
 
 	except Exception as e:
@@ -565,6 +669,8 @@ def make_table_ajax(request):
 	global simulated_df
 	global observed_df
 	global corrected_df
+
+	start_time = time.time()
 
 	try:
 
@@ -687,6 +793,8 @@ def make_table_ajax(request):
 		table_final_html = table_final.to_html(classes="table table-hover table-striped",
 											   table_id="corrected_1").replace('border="1"', 'border="0"')
 
+		print("--- %s seconds metrics_table ---" % (time.time() - start_time))
+
 		return HttpResponse(table_final_html)
 
 	except Exception:
@@ -711,6 +819,8 @@ def get_time_series(request):
 	global nomEstacion
 	global forecast_df
 	global forecast_record
+
+	start_time = time.time()
 
 	try:
 
@@ -918,6 +1028,8 @@ def get_time_series(request):
 			'gizmo_object': chart_obj,
 		}
 
+		print("--- %s seconds forecasts ---" % (time.time() - start_time))
+
 		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
 
 	except Exception as e:
@@ -935,6 +1047,8 @@ def get_time_series_bc(request):
 	global fixed_stats
 	global forecast_record
 	global fixed_records
+
+	start_time = time.time()
 
 	try:
 
@@ -1168,11 +1282,45 @@ def get_time_series_bc(request):
 			'gizmo_object': chart_obj,
 		}
 
+		print("--- %s seconds forecasts_bc ---" % (time.time() - start_time))
+
 		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
 
 	except Exception as e:
 		print(str(e))
 		return JsonResponse({'error': 'No data found for the selected reach.'})
+
+
+def get_available_dates(request):
+	get_data = request.GET
+
+	global watershed
+	global subbasin
+	global comid
+	res = requests.get('https://geoglows.ecmwf.int/api/AvailableDates/?region=' + watershed + '-' + subbasin, verify=False)
+
+	data = res.json()
+
+	dates_array = (data.get('available_dates'))
+
+	dates = []
+
+	for date in dates_array:
+		if len(date) == 10:
+			date_mod = date + '000'
+			date_f = dt.datetime.strptime(date_mod, '%Y%m%d.%H%M').strftime('%Y-%m-%d %H:%M')
+		else:
+			date_f = dt.datetime.strptime(date, '%Y%m%d.%H%M').strftime('%Y-%m-%d')
+			date = date[:-3]
+		dates.append([date_f, date, watershed, subbasin, comid])
+
+	dates.append(['Select Date', dates[-1][1]])
+	dates.reverse()
+
+	return JsonResponse({
+		"success": "Data analysis complete!",
+		"available_dates": json.dumps(dates)
+	})
 
 
 def get_observed_discharge_csv(request):
