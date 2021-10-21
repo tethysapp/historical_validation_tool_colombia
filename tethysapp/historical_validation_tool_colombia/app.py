@@ -125,6 +125,16 @@ class HistoricalValidationToolColombia(TethysAppBase):
                 url='get-forecast-bc-data-csv',
                 controller='historical_validation_tool_colombia.controllers.get_forecast_bc_data_csv'
             ),
+            UrlMap(
+                name='get_forecast_ensemble_data_csv',
+                url='get-forecast-ensemble-data-csv',
+                controller='historical_validation_tool_colombia.controllers.get_forecast_ensemble_data_csv'
+            ),
+            UrlMap(
+                name='get_forecast_ensemble_bc_data_csv',
+                url='get-forecast-ensemble-bc-data-csv',
+                controller='historical_validation_tool_colombia.controllers.get_forecast_ensemble_bc_data_csv'
+            ),
         )
 
         return url_maps
