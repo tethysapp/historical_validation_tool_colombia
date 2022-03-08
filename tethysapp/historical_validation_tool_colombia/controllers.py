@@ -722,7 +722,7 @@ def get_volumeAnalysis(request):
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
 		return JsonResponse({
-			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno), "sim_ini: " + str(simulated_df.index[0]), "sim_end: " + str(simulated_df.index[-1]), "obs_ini: " + str(observed_df.index[0]), "obs_end: " + str(observed_df.index[-1])}',
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
 
 
@@ -789,7 +789,7 @@ def volume_table_ajax(request):
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
 		return JsonResponse({
-			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno), "sim_ini: " + str(simulated_df.index[0]), "sim_end: " + str(simulated_df.index[-1]), "obs_ini: " + str(observed_df.index[0]), "obs_end: " + str(observed_df.index[-1])}',
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
 
 
@@ -951,7 +951,7 @@ def make_table_ajax(request):
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
 		return JsonResponse({
-			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno), "sim_ini: " + str(simulated_df.index[0]), "sim_end: " + str(simulated_df.index[-1]), "obs_ini: " + str(observed_df.index[0]), "obs_end: " + str(observed_df.index[-1])}',
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
 
 
@@ -1206,7 +1206,7 @@ def get_time_series(request):
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
 		return JsonResponse({
-			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno), "sim_ini: " + str(simulated_df.index[0]), "sim_end: " + str(simulated_df.index[-1]), "obs_ini: " + str(observed_df.index[0]), "obs_end: " + str(observed_df.index[-1]), "forecast_ini: " + str(forecast_df.index[0]), "forecast_end: " + str(forecast_df.index[-1])}',
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
 
 
@@ -1265,40 +1265,8 @@ def get_time_series_bc(request):
 		forecast_record.index = forecast_record.index.to_series().dt.strftime("%Y-%m-%d %H:%M:%S")
 		forecast_record.index = pd.to_datetime(forecast_record.index)
 
-		monthly_simulated = simulated_df[simulated_df.index.month == (forecast_ens.index[0]).month].dropna()
-		monthly_observed = observed_df[observed_df.index.month == (forecast_ens.index[0]).month].dropna()
-
-		min_simulated = np.min(monthly_simulated.iloc[:, 0].to_list())
-		max_simulated = np.max(monthly_simulated.iloc[:, 0].to_list())
-
-		min_factor_df = forecast_ens.copy()
-		max_factor_df = forecast_ens.copy()
-		forecast_ens_df = forecast_ens.copy()
-
-		for column in forecast_ens.columns:
-			tmp = forecast_ens[column].dropna().to_frame()
-			min_factor = tmp.copy()
-			max_factor = tmp.copy()
-			min_factor.loc[min_factor[column] >= min_simulated, column] = 1
-			min_index_value = min_factor[min_factor[column] != 1].index.tolist()
-			for element in min_index_value:
-				min_factor[column].loc[min_factor.index == element] = tmp[column].loc[
-																		  tmp.index == element] / min_simulated
-			max_factor.loc[max_factor[column] <= max_simulated, column] = 1
-			max_index_value = max_factor[max_factor[column] != 1].index.tolist()
-			for element in max_index_value:
-				max_factor[column].loc[max_factor.index == element] = tmp[column].loc[
-																		  tmp.index == element] / max_simulated
-			tmp.loc[tmp[column] <= min_simulated, column] = min_simulated
-			tmp.loc[tmp[column] >= max_simulated, column] = max_simulated
-			forecast_ens_df.update(pd.DataFrame(tmp[column].values, index=tmp.index, columns=[column]))
-			min_factor_df.update(pd.DataFrame(min_factor[column].values, index=min_factor.index, columns=[column]))
-			max_factor_df.update(pd.DataFrame(max_factor[column].values, index=max_factor.index, columns=[column]))
-
 		'''Correct Bias Forecasts'''
 		corrected_ensembles = geoglows.bias.correct_forecast(forecast_ens, simulated_df, observed_df)
-		corrected_ensembles = corrected_ensembles.multiply(min_factor_df, axis=0)
-		corrected_ensembles = corrected_ensembles.multiply(max_factor_df, axis=0)
 
 		forecast_ens_bc_file_path = os.path.join(app.get_app_workspace().path, 'forecast_ens_bc.json')
 		corrected_ensembles.index.name = 'Datetime'
@@ -1565,7 +1533,7 @@ def get_time_series_bc(request):
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
 		return JsonResponse({
-			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno), "sim_ini: " + str(simulated_df.index[0]), "sim_end: " + str(simulated_df.index[-1]), "obs_ini: " + str(observed_df.index[0]), "obs_end: " + str(observed_df.index[-1]), "forecast_ini: " + str(fixed_stats.index[0]), "forecast_end: " + str(fixed_stats.index[-1])}',
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
 
 
@@ -1621,20 +1589,10 @@ def get_observed_discharge_csv(request):
 		observed_df.index = pd.to_datetime(observed_df.index, unit='ms')
 		observed_df.sort_index(inplace=True, ascending=True)
 
-		datesObservedDischarge = observed_df.index.tolist()
-		observedDischarge = observed_df.iloc[:, 0].values
-		observedDischarge.tolist()
-
-		pairs = [list(a) for a in zip(datesObservedDischarge, observedDischarge)]
-
 		response = HttpResponse(content_type='text/csv')
 		response['Content-Disposition'] = 'attachment; filename=observed_discharge_{0}.csv'.format(codEstacion)
 
-		writer = csv_writer(response)
-		writer.writerow(['datetime', 'Observed Streamflow (m3/s)'])
-
-		for row_data in pairs:
-			writer.writerow(row_data)
+		observed_df.to_csv(encoding='utf-8', header=True, path_or_buf=response)
 
 		return response
 
@@ -1653,7 +1611,6 @@ def get_simulated_discharge_csv(request):
 	"""
 
 	try:
-
 		get_data = request.GET
 		watershed = get_data['watershed']
 		subbasin = get_data['subbasin']
@@ -1667,16 +1624,10 @@ def get_simulated_discharge_csv(request):
 		simulated_df.index = pd.to_datetime(simulated_df.index)
 		simulated_df.sort_index(inplace=True, ascending=True)
 
-		pairs = [list(a) for a in zip(simulated_df.index, simulated_df.iloc[:, 0])]
-
 		response = HttpResponse(content_type='text/csv')
 		response['Content-Disposition'] = 'attachment; filename=simulated_discharge_{0}.csv'.format(codEstacion)
 
-		writer = csv_writer(response)
-		writer.writerow(['datetime', 'Simulated Streamflow (m3/s)'])
-
-		for row_data in pairs:
-			writer.writerow(row_data)
+		simulated_df.to_csv(encoding='utf-8', header=True, path_or_buf=response)
 
 		return response
 
@@ -1792,7 +1743,6 @@ def get_forecast_ensemble_data_csv(request):
 		exc_type, exc_obj, exc_tb = sys.exc_info()
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
-
 		return JsonResponse({
 				'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
@@ -1836,38 +1786,38 @@ def get_forecast_bc_data_csv(request):
 
 
 def get_forecast_ensemble_bc_data_csv(request):
-    """""
-    Returns Forecast data as csv
-    """""
+	"""""
+	Returns Forecast data as csv
+	"""""
 
-    get_data = request.GET
+	get_data = request.GET
 
-    try:
-        # get station attributes
-        watershed = get_data['watershed']
-        subbasin = get_data['subbasin']
-        comid = get_data['streamcomid']
-        startdate = get_data['startdate']
+	try:
+		# get station attributes
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		startdate = get_data['startdate']
 
-        '''Get Forecast Ensemble Data'''
-        forecast_ens_bc_file_path = os.path.join(app.get_app_workspace().path, 'forecast_ens_bc.json')
-        corrected_ensembles = pd.read_json(forecast_ens_bc_file_path, convert_dates=True)
-        corrected_ensembles.index = pd.to_datetime(corrected_ensembles.index)
-        corrected_ensembles.sort_index(inplace=True, ascending=True)
+		'''Get Forecast Ensemble Data'''
+		forecast_ens_bc_file_path = os.path.join(app.get_app_workspace().path, 'forecast_ens_bc.json')
+		corrected_ensembles = pd.read_json(forecast_ens_bc_file_path, convert_dates=True)
+		corrected_ensembles.index = pd.to_datetime(corrected_ensembles.index)
+		corrected_ensembles.sort_index(inplace=True, ascending=True)
 
-        # Writing CSV
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=corrected_streamflow_ensemble_forecast_{0}_{1}_{2}_{3}.csv'.format(watershed, subbasin, comid, startdate)
+		# Writing CSV
+		response = HttpResponse(content_type='text/csv')
+		response['Content-Disposition'] = 'attachment; filename=corrected_streamflow_ensemble_forecast_{0}_{1}_{2}_{3}.csv'.format(watershed, subbasin, comid, startdate)
 
-        corrected_ensembles.to_csv(encoding='utf-8', header=True, path_or_buf=response)
+		corrected_ensembles.to_csv(encoding='utf-8', header=True, path_or_buf=response)
 
-        return response
+		return response
 
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        print("error: " + str(e))
-        print("line: " + str(exc_tb.tb_lineno))
+	except Exception as e:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print("error: " + str(e))
+		print("line: " + str(exc_tb.tb_lineno))
 
-        return JsonResponse({
-            'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
-        })
+		return JsonResponse({
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
+		})

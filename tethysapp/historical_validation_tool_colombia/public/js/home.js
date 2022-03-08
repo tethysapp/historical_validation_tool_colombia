@@ -195,8 +195,11 @@ function get_hydrographs (watershed, subbasin, streamcomid, stationcode, station
                 });
 
                 var params_obs = {
-                    stationcode: stationcode,
-                    stationname: stationname,
+                    watershed: watershed,
+                	subbasin: subbasin,
+                	streamcomid: streamcomid,
+                	stationcode:stationcode,
+                	stationname: stationname
                 };
 
                 $('#submit-download-observed-discharge').attr({
@@ -287,6 +290,7 @@ function get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stati
         },
         success: function (data) {
             if (!data.error) {
+            	console.log("get_dailyAverages in");
                 $('#dailyAverages-loading').addClass('hidden');
                 $('#dates').removeClass('hidden');
 //                $('#obsdates').removeClass('hidden');
@@ -514,6 +518,7 @@ function get_volumeAnalysis (watershed, subbasin, streamcomid, stationcode, stat
         },
         success: function (data) {
             if (!data.error) {
+            	console.log("get_volumeAnalysis in");
                 $('#volumeAnalysis-loading').addClass('hidden');
                 $('#dates').removeClass('hidden');
 //                $('#obsdates').removeClass('hidden');
@@ -888,7 +893,7 @@ $(document).ready(function(){
     $("#make-table").click(function(){
 
         var model = $('#model option:selected').text();
-        var watershed = 'south_america' //OJO buscar como hacerla generica
+        watershed = 'south_america' //OJO buscar como hacerla generica
         //var subbasin = 'continental' //OJO buscar como hacerla generica
         var subbasin = 'geoglows' //OJO buscar como hacerla generica
         var startdate = '';
