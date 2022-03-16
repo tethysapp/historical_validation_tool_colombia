@@ -335,7 +335,7 @@ def get_dailyAverages(request):
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
 		return JsonResponse({
-			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno), "sim_ini: " + str(simulated_df.index[0]), "sim_end: " + str(simulated_df.index[-1]), "obs_ini: " + str(observed_df.index[0]), "obs_end: " + str(observed_df.index[-1])}',
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
 
 
@@ -413,7 +413,7 @@ def get_monthlyAverages(request):
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
 		return JsonResponse({
-			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno), "sim_ini: " + str(simulated_df.index[0]), "sim_end: " + str(simulated_df.index[-1]), "obs_ini: " + str(observed_df.index[0]), "obs_end: " + str(observed_df.index[-1])}',
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
 
 
@@ -531,7 +531,7 @@ def get_scatterPlot(request):
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
 		return JsonResponse({
-			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno), "sim_ini: " + str(simulated_df.index[0]), "sim_end: " + str(simulated_df.index[-1]), "obs_ini: " + str(observed_df.index[0]), "obs_end: " + str(observed_df.index[-1])}',
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
 
 
@@ -623,9 +623,8 @@ def get_scatterPlotLogScale(request):
 		print("error: " + str(e))
 		print("line: " + str(exc_tb.tb_lineno))
 		return JsonResponse({
-			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno), "sim_ini: " + str(simulated_df.index[0]), "sim_end: " + str(simulated_df.index[-1]), "obs_ini: " + str(observed_df.index[0]), "obs_end: " + str(observed_df.index[-1])}',
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
-
 
 def get_volumeAnalysis(request):
 	"""
@@ -1266,7 +1265,41 @@ def get_time_series_bc(request):
 		forecast_record.index = pd.to_datetime(forecast_record.index)
 
 		'''Correct Bias Forecasts'''
-		corrected_ensembles = geoglows.bias.correct_forecast(forecast_ens, simulated_df, observed_df)
+		monthly_simulated = simulated_df[simulated_df.index.month == (forecast_ens.index[0]).month].dropna()
+		monthly_observed = observed_df[observed_df.index.month == (forecast_ens.index[0]).month].dropna()
+
+		min_simulated = np.min(monthly_simulated.iloc[:, 0].to_list())
+		max_simulated = np.max(monthly_simulated.iloc[:, 0].to_list())
+
+		min_factor_df = forecast_ens.copy()
+		max_factor_df = forecast_ens.copy()
+		forecast_ens_df = forecast_ens.copy()
+
+		for column in forecast_ens.columns:
+			tmp = forecast_ens[column].dropna().to_frame()
+			min_factor = tmp.copy()
+			max_factor = tmp.copy()
+			min_factor.loc[min_factor[column] >= min_simulated, column] = 1
+			min_index_value = min_factor[min_factor[column] != 1].index.tolist()
+
+			for element in min_index_value:
+				min_factor[column].loc[min_factor.index == element] = tmp[column].loc[tmp.index == element] / min_simulated
+
+			max_factor.loc[max_factor[column] <= max_simulated, column] = 1
+			max_index_value = max_factor[max_factor[column] != 1].index.tolist()
+
+			for element in max_index_value:
+				max_factor[column].loc[max_factor.index == element] = tmp[column].loc[tmp.index == element] / max_simulated
+
+			tmp.loc[tmp[column] <= min_simulated, column] = min_simulated
+			tmp.loc[tmp[column] >= max_simulated, column] = max_simulated
+			forecast_ens_df.update(pd.DataFrame(tmp[column].values, index=tmp.index, columns=[column]))
+			min_factor_df.update(pd.DataFrame(min_factor[column].values, index=min_factor.index, columns=[column]))
+			max_factor_df.update(pd.DataFrame(max_factor[column].values, index=max_factor.index, columns=[column]))
+
+		corrected_ensembles = geoglows.bias.correct_forecast(forecast_ens_df, simulated_df, observed_df)
+		corrected_ensembles = corrected_ensembles.multiply(min_factor_df, axis=0)
+		corrected_ensembles = corrected_ensembles.multiply(max_factor_df, axis=0)
 
 		forecast_ens_bc_file_path = os.path.join(app.get_app_workspace().path, 'forecast_ens_bc.json')
 		corrected_ensembles.index.name = 'Datetime'
@@ -1306,14 +1339,63 @@ def get_time_series_bc(request):
 		x_vals = (fixed_stats.index[0], fixed_stats.index[len(fixed_stats.index) - 1], fixed_stats.index[len(fixed_stats.index) - 1], fixed_stats.index[0])
 		max_visible = max(fixed_stats.max())
 
-		'''Getting forecast record'''
-
-		fixed_records = forecast_record.copy()
-		fixed_records = fixed_records.loc[fixed_records.index >= pd.to_datetime(forecast_ens.index[0] - dt.timedelta(days=8))]
-		fixed_records = fixed_records.loc[fixed_records.index <= pd.to_datetime(forecast_ens.index[0] + dt.timedelta(days=2))]
-
 		'''Correct Bias Forecasts Records'''
-		record_plot = geoglows.bias.correct_forecast(fixed_records, simulated_df, observed_df, use_month=-1)
+
+		date_ini = forecast_record.index[0]
+		month_ini = date_ini.month
+
+		date_end = forecast_record.index[-1]
+		month_end = date_end.month
+
+		meses = np.arange(month_ini, month_end + 1, 1)
+
+		fixed_records = pd.DataFrame()
+
+		for mes in meses:
+			values = forecast_record.loc[forecast_record.index.month == mes]
+
+			monthly_simulated = simulated_df[simulated_df.index.month == mes].dropna()
+			monthly_observed = observed_df[observed_df.index.month == mes].dropna()
+
+			min_simulated = np.min(monthly_simulated.iloc[:, 0].to_list())
+			max_simulated = np.max(monthly_simulated.iloc[:, 0].to_list())
+
+			min_factor_records_df = values.copy()
+			max_factor_records_df = values.copy()
+			fixed_records_df = values.copy()
+
+			column_records = values.columns[0]
+			tmp = forecast_record[column_records].dropna().to_frame()
+			min_factor = tmp.copy()
+			max_factor = tmp.copy()
+			min_factor.loc[min_factor[column_records] >= min_simulated, column_records] = 1
+			min_index_value = min_factor[min_factor[column_records] != 1].index.tolist()
+
+			for element in min_index_value:
+				min_factor[column_records].loc[min_factor.index == element] = tmp[column_records].loc[tmp.index == element] / min_simulated
+
+			max_factor.loc[max_factor[column_records] <= max_simulated, column_records] = 1
+			max_index_value = max_factor[max_factor[column_records] != 1].index.tolist()
+
+			for element in max_index_value:
+				max_factor[column_records].loc[max_factor.index == element] = tmp[column_records].loc[tmp.index == element] / max_simulated
+
+			tmp.loc[tmp[column_records] <= min_simulated, column_records] = min_simulated
+			tmp.loc[tmp[column_records] >= max_simulated, column_records] = max_simulated
+			fixed_records_df.update(pd.DataFrame(tmp[column_records].values, index=tmp.index, columns=[column_records]))
+			min_factor_records_df.update(pd.DataFrame(min_factor[column_records].values, index=min_factor.index, columns=[column_records]))
+			max_factor_records_df.update(pd.DataFrame(max_factor[column_records].values, index=max_factor.index, columns=[column_records]))
+
+			corrected_values = geoglows.bias.correct_forecast(fixed_records_df, simulated_df, observed_df)
+			corrected_values = corrected_values.multiply(min_factor_records_df, axis=0)
+			corrected_values = corrected_values.multiply(max_factor_records_df, axis=0)
+			fixed_records = fixed_records.append(corrected_values)
+
+		fixed_records.sort_index(inplace=True)
+
+		record_plot = fixed_records.copy()
+		record_plot = record_plot.loc[record_plot.index >= pd.to_datetime(fixed_stats.index[0] - dt.timedelta(days=8))]
+		record_plot = record_plot.loc[record_plot.index <= pd.to_datetime(fixed_stats.index[0] + dt.timedelta(days=2))]
 
 		if len(record_plot.index) > 0:
 			hydroviewer_figure.add_trace(go.Scatter(
