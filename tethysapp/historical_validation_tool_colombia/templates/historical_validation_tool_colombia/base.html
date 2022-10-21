@@ -35,7 +35,8 @@
 {% block scripts %}
   {{ block.super }}
   <script>
-    var staticGeoJSON = "{% static 'historical_validation_tool_colombia/geojson/' %}";
+    var staticGeoJSON  = "{% static 'historical_validation_tool_colombia/geojson/' %}";
+    var staticStations = "{% static 'historical_validation_tool_colombia/stations/' %}";
   </script>
   {# Allows csrf verification with AJAX #}
   <script src="{% static 'historical_validation_tool_colombia/js/regionsIndex.js' %}" type="text/javascript"></script>

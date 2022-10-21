@@ -19,6 +19,7 @@ from HydroErr.HydroErr import metric_names, metric_abbr
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.contrib import messages
 from scipy import integrate
 from tethys_sdk.gizmos import *
 
@@ -26,11 +27,17 @@ import time
 from hs_restclient import HydroShare, HydroShareAuthBasic
 from .app import HistoricalValidationToolColombia as app
 
+# Call model script (folder)
+from .model import Model as model
+from .model import Stations_manage as stations
+
 
 def home(request):
 	"""
 	Controller for the app home page.
 	"""
+	# Add foo_station/ Station_manage object to global variables
+	global foo_station
 
 	# List of Metrics to include in context
 	metric_loop_list = list(zip(metric_names, metric_abbr))
@@ -91,11 +98,19 @@ def home(request):
 		options=[(region_index[opt]['name'], opt) for opt in region_index]
 	)
 
+	# Load stations data (IDEAM_Stations_v2.json)
+	stations_file = os.path.join(os.path.dirname(__file__), 'public', 'stations', 'IDEAM_Stations_v2.json')
+	foo_station = stations(path_dir=stations_file)
+
+	search_list = foo_station.search_list
+
 	context = {
 		"metric_loop_list": metric_loop_list,
 		"geoserver_endpoint": geoserver_endpoint,
 		"date_picker": date_picker,
-		"regions": regions
+		"regions" : regions,
+
+		"search_list" : search_list,
 	}
 
 	return render(request, 'historical_validation_tool_colombia/home.html', context)
@@ -792,6 +807,223 @@ def volume_table_ajax(request):
 		})
 
 
+#################################################################################
+def get_plotreturnperiod(request):
+	"""
+	Get plot of historical data for return periode.
+	Input:
+		- request
+	Output:
+		- plotlyView
+	"""
+
+	global foo_model
+	foo_model = model()
+
+	start_time = time.time()
+
+	try:
+		get_data = request.GET
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
+
+		# TODO: CHANGE READ DATA AS AN OBJECT.
+		'''Get Observed Data'''
+		observed_data_file_path = os.path.join(app.get_app_workspace().path, 'observed_data.json')
+		observed_df = pd.read_json(observed_data_file_path, convert_dates=True)
+		observed_df.index = pd.to_datetime(observed_df.index, unit='ms')
+		observed_df.sort_index(inplace=True, ascending=True)
+
+		'''Get Simulated Data'''
+		simulated_data_file_path = os.path.join(app.get_app_workspace().path, 'simulated_data.json')
+		simulated_df = pd.read_json(simulated_data_file_path, convert_dates=True)
+		simulated_df.index = pd.to_datetime(simulated_df.index)
+		simulated_df.sort_index(inplace=True, ascending=True)
+
+		'''Get Bias Corrected Data'''
+		corrected_data_file_path = os.path.join(app.get_app_workspace().path, 'corrected_data.json')
+		corrected_df = pd.read_json(corrected_data_file_path, convert_dates=True)
+		corrected_df.index = pd.to_datetime(corrected_df.index)
+		corrected_df.sort_index(inplace=True, ascending=True)
+
+		'''Get merged data'''
+		df = observed_df.join(corrected_df, how='inner')
+		df = df.join(simulated_df, how='inner')
+
+		observed_df  = df[observed_df.columns].copy()
+		corrected_df = df[corrected_df.columns].copy()
+		simulated_df = df[simulated_df.columns].copy()
+
+		'''Get return periods and return periode asinged'''
+		return_periods_obs, return_periods_arr, _ = foo_model.get_asigned_return_period(obs_df   = observed_df,
+																						 sim_raw = simulated_df,
+															   			          	     sim_df  = corrected_df)
+
+		'''Plotting Data'''
+		ticktext=['Q (T:{0:.0f} años)'.format(ii) for ii in [2, 5, 10, 25, 50, 100]]
+
+		heatmap = go.Heatmap(
+			z = return_periods_arr,
+			x = corrected_df.index,
+			y = ['Datos observados', 'Datos simulados corregidos', 'Datos simulados'],
+			colorscale=[[0.0/6.0, "rgba(0, 0, 0, 0)"],
+						[1.0/6.0, "rgba(0, 0, 0, 0)"],
+
+						[1.0/6.0, "rgb(254, 240, 1)"],
+						[2.0/6.0, "rgb(254, 240, 1)"],
+
+						[2.0/6.0, "rgb(253, 154, 1)"], 
+						[3.0/6.0, "rgb(253, 154, 1)"], 
+
+						[3.0/6.0, "rgb(255, 56, 5)"], 
+						[4.0/6.0, "rgb(255, 56, 5)"], 
+
+						[4.0/6.0, "rgb(255, 0, 0)"],
+						[5.0/6.0, "rgb(255, 0, 0)"],
+
+						[5.0/6.0, "rgb(128, 0, 106)"],
+						[5.9/6.0, "rgb(128, 0, 106)"],
+
+						[5.9/6.0, "rgb(128, 0, 246)"],
+						[6.0/6.0, "rgb(128, 0, 246)"]],
+			colorbar=dict(
+				tickvals=[1, 2, 3, 4, 5, 6],
+				ticktext=ticktext,
+			),
+			zmin=0,
+			zmax=6,
+		)
+
+
+		layout = go.Layout(title="Serie de periodos de retorno: {0} - {1}.".format(codEstacion, nomEstacion),
+						   xaxis=dict(title='Fechas.'),
+						   yaxis=dict(title='Series de tiempo',
+						   			  autorange=True),
+						   showlegend=True)
+
+		chart_obj = PlotlyView(go.Figure(data=[heatmap],
+		 								 layout=layout))
+
+		context = {
+			'gizmo_object': chart_obj,
+		}
+
+		print("--- %s seconds plotreturnperiod ---" % (time.time() - start_time))
+
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+	except Exception as e:
+
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print("error: " + str(e))
+		print("line: " + str(exc_tb.tb_lineno))
+		return JsonResponse({
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
+		})
+
+
+def get_confusionmatrix(request):
+	"""
+	Get table with return periodo inforamtion
+	Input:
+		- request
+	Output:
+		- HTML table
+	"""
+	start_time = time.time()
+
+
+	try:
+		get_data = request.GET
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
+
+		'''Get return periods and return periode asinged'''
+		confusion_matrix, norm_confusion_mat, labels = foo_model.get_confusion_matrix()
+
+		'''Plotting Data'''
+		mat = go.Heatmap(
+			z    = norm_confusion_mat,
+			x    = labels[0],
+			y    = labels[1],
+			text = confusion_matrix,
+			texttemplate="%{text}",
+            textfont={"size":10},
+			showscale=False,
+			colorscale='Blues'
+		)
+
+		layout = go.Layout(title="Matriz de confusión de {0} - {1}.".format(codEstacion, nomEstacion),
+						   xaxis=dict(title='Caudal observado [m3/s]'),
+						   yaxis=dict(title='Caudal simulado y simulado corregido [m3/s]',
+						   			  autorange='reversed'),
+						   showlegend=False,
+						   )
+
+		chart_obj = PlotlyView(go.Figure(data=[mat],
+		 								 layout=layout))
+
+		context = {
+			'gizmo_object': chart_obj,
+		}
+
+		print("--- %s seconds confusionmatrix ---" % (time.time() - start_time))
+
+		return render(request, 'historical_validation_tool_colombia/gizmo_ajax.html', context)
+
+
+	except Exception as e:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print("error: " + str(e))
+		print("line: " + str(exc_tb.tb_lineno))
+		return JsonResponse({
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
+		})
+
+
+def get_tableconfusionmatrix(request):
+	"""
+	Get table with statistics of confusion matrix
+	Input:
+		request
+	Output:
+		jsonreponse
+	"""
+	start_time = time.time()
+
+	try:
+		
+		get_data = request.GET
+		watershed = get_data['watershed']
+		subbasin = get_data['subbasin']
+		comid = get_data['streamcomid']
+		codEstacion = get_data['stationcode']
+		nomEstacion = get_data['stationname']
+
+		'''Get return periods and return periode asinged'''
+		table_data = foo_model.get_summmarice_return_period()
+
+		print("--- %s seconds tableconfusionmatrix  ---" % (time.time() - start_time))
+		
+		return HttpResponse(table_data.to_html(table_id='table-confusion-matrix', header=False))
+
+	except Exception as e:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print("error: " + str(e))
+		print("line: " + str(exc_tb.tb_lineno))
+		return JsonResponse({
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
+		})
+#################################################################################
+
+
+# Metric report
 def make_table_ajax(request):
 
 	start_time = time.time()
@@ -1903,3 +2135,35 @@ def get_forecast_ensemble_bc_data_csv(request):
 		return JsonResponse({
 			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
 		})
+
+
+############################################################
+def get_zoom_array(request):
+	zoom_description = request.GET['zoom_desc']
+
+	# Ivalid search
+	if zoom_description == '':
+		resp = {'geojson' : 'COLOMBIA.json',
+				'message'  : 404}
+		return JsonResponse(resp)
+
+	try:
+		file_name, station_file, message, station_cont, boundary_cont = foo_station(search_id=zoom_description)
+
+		return JsonResponse({'geojson' : file_name,
+							 'message' : message,
+							 'stations': station_file,
+							 'stations-cont' : station_cont,
+							 'boundary-cont' : boundary_cont})
+
+	except Exception as e:
+
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		print("error: " + str(e))
+		print("line: " + str(exc_tb.tb_lineno))
+
+		return JsonResponse({
+			'error': f'{"error: " + str(e), "line: " + str(exc_tb.tb_lineno)}',
+		})
+
+############################################################
