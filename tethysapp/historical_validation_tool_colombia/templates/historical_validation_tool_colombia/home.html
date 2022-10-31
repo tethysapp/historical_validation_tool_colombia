@@ -30,6 +30,16 @@
         {% gizmo select_input regions %}
       </div>
 
+      {# Search Basins #}
+      <div>
+        {% gizmo select_input basins %}
+      </div>
+
+      {# Search SubBasins #}
+      <div>
+        {% gizmo select_input subbasins %}
+      </div>
+
       <div>
         {# Search window #}
         <div>
@@ -152,7 +162,7 @@
                   <div class="metric-table" id="volume_table_div" style="display:none">
                     <div id="volume_table"><!-- The table or errors go here --></div>
                   </div>
-                  <!-- 
+                  <!--
                   <div class="flex-container-row"><img id="plotreturnperiod-loading" class="view-file hidden" src="{% static 'historical_validation_tool_colombia/images/loader.gif' %}" /></div>
                   <div id="plotreturnperiod-chart"></div>
                   
@@ -161,7 +171,7 @@
                   
                   <div class="flex-container-row"><img id="tableconfusionmatrix-loading" class="view-file hidden" src="{% static 'historical_validation_tool_colombia/images/loader.gif' %}" /></div> 
                   <div id="tableconfusionmatrix-chart"></div>
-                  -->
+                   -->
                 </div>
               </div>
             </div>

@@ -766,6 +766,7 @@ function resize_graphs() {
         	'xaxis.autorange': true,
         	'yaxis.autorange': true
         });
+        // ##################################################
         /*
         Plotly.Plots.resize($("#plotreturnperiod-chart .js-plotly-plot")[0]);
         Plotly.relayout($("#plotreturnperiod-chart .js-plotly-plot")[0], {
@@ -882,6 +883,81 @@ $('#stp-stations-toggle').on('change', function() {
 
 // Regions gizmo listener
 $('#regions').change(function () { getRegionGeoJsons() });
+
+
+function getBasinGeoJsons() {
+
+    let basins = region_index2[$("#basins").val()]['geojsons'];
+    for (let i in basins) {
+        var regionsSource = new ol.source.Vector({
+           url: staticGeoJSON2 + basins[i],
+           format: new ol.format.GeoJSON()
+        });
+
+        var regionStyle = new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: '#0050a0',
+                width: 3
+            })
+        });
+
+        var regionsLayer = new ol.layer.Vector({
+            name: 'myRegion',
+            source: regionsSource,
+            style: regionStyle
+        });
+
+        map.getLayers().forEach(function(regionsLayer) {
+        if (regionsLayer.get('name')=='myRegion')
+            map.removeLayer(regionsLayer);
+        });
+        map.addLayer(regionsLayer)
+
+        setTimeout(function() {
+            var myExtent = regionsLayer.getSource().getExtent();
+            map.getView().fit(myExtent, map.getSize());
+        }, 500);
+    }
+}
+
+function getSubBasinGeoJsons() {
+
+    let subbasins = region_index3[$("#subbasins").val()]['geojsons'];
+    for (let i in subbasins) {
+        var regionsSource = new ol.source.Vector({
+           url: staticGeoJSON3 + subbasins[i],
+           format: new ol.format.GeoJSON()
+        });
+
+        var regionStyle = new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: '#0050a0',
+                width: 3
+            })
+        });
+
+        var regionsLayer = new ol.layer.Vector({
+            name: 'myRegion',
+            source: regionsSource,
+            style: regionStyle
+        });
+
+        map.getLayers().forEach(function(regionsLayer) {
+        if (regionsLayer.get('name')=='myRegion')
+            map.removeLayer(regionsLayer);
+        });
+        map.addLayer(regionsLayer)
+
+        setTimeout(function() {
+            var myExtent = regionsLayer.getSource().getExtent();
+            map.getView().fit(myExtent, map.getSize());
+        }, 500);
+    }
+}
+
+// Regions gizmo listener
+$('#basins').change(function() {getBasinGeoJsons()});
+$('#subbasins').change(function() {getSubBasinGeoJsons()});
 
 // ######################################################################
 // Add data of the list to search input window

@@ -104,6 +104,31 @@ def home(request):
 
 	search_list = foo_station.search_list
 
+	# Select Basins
+	basin_index = json.load(open(os.path.join(os.path.dirname(__file__), 'public', 'geojson2', 'index2.json')))
+	basins = SelectInput(
+        display_text='Zoom to a Basin:',
+        name='basins',
+        multiple=False,
+        # original=True,
+        options=[(basin_index[opt]['name'], opt) for opt in basin_index],
+        initial='',
+        select2_options={'placeholder': 'Select a Basin', 'allowClear': False}
+	)
+
+    # Select SubBasins
+	subbasin_index = json.load(open(os.path.join(os.path.dirname(__file__), 'public', 'geojson3', 'index3.json')))
+	subbasins = SelectInput(
+        display_text='Zoom to a Subbasin:',
+        name='subbasins',
+        multiple=False,
+        # original=True,
+        options=[(subbasin_index[opt]['name'], opt) for opt in subbasin_index],
+        initial='',
+        select2_options={'placeholder': 'Select a Subbasin', 'allowClear': False}
+	)
+
+
 	context = {
 		"metric_loop_list": metric_loop_list,
 		"geoserver_endpoint": geoserver_endpoint,
@@ -111,6 +136,9 @@ def home(request):
 		"regions" : regions,
 
 		"search_list" : search_list,
+
+		"basins" : basins,
+		"subbasins" : subbasins,
 	}
 
 	return render(request, 'historical_validation_tool_colombia/home.html', context)
