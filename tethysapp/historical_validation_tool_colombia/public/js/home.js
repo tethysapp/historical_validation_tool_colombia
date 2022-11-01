@@ -257,11 +257,11 @@ function get_hydrographs (watershed, subbasin, streamcomid, stationcode, station
         		get_time_series(watershed, subbasin, streamcomid, stationcode, stationname, startdate);
                 // ####################################################################################
                 // ####################################################################################
-                /*
+                
                 get_plotreturnperiod(watershed, subbasin, streamcomid, stationcode, stationname);
                 get_confusionmatrix(watershed, subbasin, streamcomid, stationcode, stationname);
                 get_tableconfusionmatrix(watershed, subbasin, streamcomid, stationcode, stationname);
-                */
+                
                 // ####################################################################################
                 // ####################################################################################
 
