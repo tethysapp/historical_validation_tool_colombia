@@ -15,12 +15,12 @@ resource_files += find_resource_files('tethysapp/' + app_package + '/workspaces'
 
 setup(
     name=release_package,
-    version='1.1',
+    version='1.2',
     description='This app combines the observed data and the simulated data from the GEOGloWS ECMWF Streaamflow Services in Colombia.',
     long_description='',
     keywords='"Hydrology", "Time Series", "Bias Correction", "Hydrostats", "GEOGloWS", "Historical Validation Tool", "Colombia"',
-    author='Jorge Luis Sanchez-Lozano',
-    author_email='jorgessanchez7@gmail.com',
+    author='Jorge Luis Sanchez-Lozano, Jhonatan Rodriguez Chaves',
+    author_email='jorgessanchez7@gmail.com, jhrodriguezch@unal.edu.co',
     url='',
     license='',
     packages=find_namespace_packages(),
