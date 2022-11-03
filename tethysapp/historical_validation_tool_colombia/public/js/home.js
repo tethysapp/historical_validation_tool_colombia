@@ -995,22 +995,28 @@ function search_func () {
             let geojsons_boundary = resp['geojson'];
             let message = resp['message'];
             let geojson_staions = resp['stations'];
-            // let geojson_boundary_cont = resp['boundary-cont'];
-            // let geojson_stations_cont = resp['stations-cont'];
+            let geojson_boundary_cont = resp['boundary-cont'];
+            let geojson_stations_cont = resp['stations-cont'];
 
             if (message < 400) {
 
-                // Read region to zoom in
                 var regionsSource = new ol.source.Vector({
-                    url: staticStations + geojsons_boundary,
-                    format: new ol.format.GeoJSON()
                 });
+                regionsSource.addFeatures(
+                  new ol.format.GeoJSON().readFeatures(geojson_boundary_cont, {
+                    dataProjection: 'EPSG:4326',
+                    featureProjection: map.getView().getProjection()
+                  })
+                );
 
-                // Read stations in region
                 var stationsSource = new ol.source.Vector({
-                    url: staticStations + geojson_staions,
-                    format: new ol.format.GeoJSON()
                 });
+                stationsSource.addFeatures(
+                  new ol.format.GeoJSON().readFeatures(geojson_stations_cont, {
+                    dataProjection: 'EPSG:4326',
+                    featureProjection: map.getView().getProjection()
+                  })
+                );
 
                 // Style region to zoom in
                 var regionStyle = new ol.style.Style({
