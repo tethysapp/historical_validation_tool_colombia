@@ -1,0 +1,129 @@
+{% extends "historical_validation_tool_colombia/base.html" %}
+{% load staticfiles %}
+
+{% block import_gizmos %}
+{% endblock %}
+
+
+{% block header_buttons %}
+  <div class="header-button glyphicon-button" data-toggle="tooltip" data-placement="bottom" title="About">
+    <a data-toggle="modal" data-target="#about"><span class="glyphicon glyphicon-info-sign"></span></a>
+  </div>
+{% endblock %}
+
+{% block app_navigation_items %}
+{% url "historical_validation_tool_colombia:home" as home %}
+{% url "historical_validation_tool_colombia:user_manual" as user_manual %}
+{% url "historical_validation_tool_colombia:technical_manual" as technical_manual %}
+
+<li class="{% if request.path == home %}active{% endif %}"><a href="{{ home }}">Aplicación</a></li>
+<li class="{% if request.path == user_manual %}active{% endif %}"><a href="{{ user_manual }}">Manual de Usuario</a></li>
+<li class="{% if request.path == technical_manual %}active{% endif %}"><a href="{{ technical_manual }}">Manual Técnico</a></li>
+{% endblock %}
+
+{% block app_content %}
+<div class="main_content">
+  <center><h1>MANUAL TÉCNICO</h1></center>
+  <center><h1><strong>HISTORICAL VALIDATION TOOL</strong></h1></center>
+
+  <div>
+    <div>
+      <center><h3>BIAS CORRECTION</h3></center>
+
+      <div class="fb_1">
+        <div class="fb_11">
+          <p><center><img src="{% static 'historical_validation_tool_colombia/images/historic_validation_colombia_logo_v2.png' %}" style="width: 200px;" /> </center></p>
+        </div>
+        <div class="fb_12">
+          <p>Los resultados de los modelos globales suelen mostrar sesgos a escala local o en lugares específicos.
+          Aunque el tiempo y otros parámetros generales de un evento de inund ación pueden ser correctos, la magnitud real del
+          evento puede ser consistentemente más alta o más baja que los caudales reales.
+          Estas predicciones sesgadas impiden su uso a escala local porque el sesgo puede afectar significativamente a la
+          precisión de una inundación simulada y, si es incorrecta, puede hacer que los responsables de la toma de
+          decisiones pierdan la confianza en los modelos.</p>
+        </div>
+      </div>
+
+      <p>La corrección de sesgo usada se basa en curvas de duración de caudales mensuales descrito por
+      <a href="https://doi.org/10.3390/hydrology8020071"> Sanchez-Lozano et al.,2021.</a></p>
+
+      <p>El autor de la metodología  <a href="https://hess.copernicus.org/articles/22/5741/2018/"> Farmer et al.(2018).</a>, 
+      se basa en la curva de duración del caudal, que se ha propuesto para corregir el sesgo de caudal simulado por GEOGLoWS ECMWF.
+      </p>
+
+      <p><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/curvaduracion.png' %}" style="width: 700px;" /> </center></p>
+
+      <p>En primer lugar, la curva de duración del caudal es calculada a partir de las series temporales simuladas históricas
+        y de las series temporales de caudales observados para cada mes. La curva de duración del caudal muestra el porcentaje
+        acumulado de tiempo en el que  se ha superado un caudal determinado durante un periodo concreto.</p>
+
+      <p>Utilizando la curva de duración del caudal, podemos estimar la probabilidad de no superación de cada valor simulado
+      para cada mes. Esto se muestra en el gráfico como la línea horizontal superior, que conecta los datos simulados con la
+      curva de duración del caudal simulado.
+      La línea vertical muestra esa misma probabilidad de no superación en la curva de duración del caudal de los datos
+        observados.
+        Por último, corregimos el valor simulado sustituyéndolo por el caudal observado equivalente a la misma probabilidad de
+      no superación, que se muestra en la línea horizontal inferior.</p>
+
+
+      <p>Puede utilizar los datos históricos observados que tiene para los sitios que le interesan para ajustar cualquier
+        sesgo en la simulación histórica y el pronóstico en ese punto (estamos trabajando en la ampliación de la corrección
+        del sesgo a las zonas no aforadas).</p>
+
+      <p>La siguiente figura muestra la corrección de sesgo aplicada para toda la simulación histórica. Después de la corrección
+        del sesgo, la simulación histórica corrige la magnitud de los valores acercándolos a los datos observados.
+        Sin embargo, no corrige el momento en el que se producen los picos. Sin embargo, los valores corregidos están en el
+        mismo orden de magnitud que los valores observados.</p>
+      <p><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/technicalimage.png' %}" style="width: 700px;" /> </center></p>
+    </div>
+
+    <div>
+      <center><h3>Resultados para Colombia</h3></center>
+      <i>** Actualmente en desarrollo.</i> 
+    </div>
+  </div>
+  
+  <div>
+    
+    <h3><strong>Recursos Adicionales</strong></h3>
+    
+    <div>
+      <h4><strong>Ejercicios Prácticos</strong></h4>
+      <p>Por favor siga las instrucciones de los videos para seguir el colab y haga una copia del mismo en su máquina.</p>
+      <p><b>Correción del Sesgo - GEOGloWS ECMWF Streamflow Prediction Services - Colombia </b></p>
+      <i>** Actualmente en desarrollo.</i>
+      <p><b>Evaluación del desempeño de los pronósticos del modelo GESS - Colombia</b></p>
+      <i>** Actualmente en desarrollo.</i>
+    </div>
+  
+  
+    <div>
+      <h4><strong>Páginas de Interés</strong></h4>
+      <p>Página de IDEAM: <a class="reference external" href="http://www.ideam.gov.co/" target="_blank">IDEAM</a></p>
+      <p>Página de CIAT: <a class="reference external" href="https://ciat.cgiar.org/?lang=es" target="_blank">CIAT</a></p>
+      <p>Página de SERVIR-Amazonia: <a class="reference external" href="https://servir.ciat.cgiar.org/?lang=es" target="_blank">SERVIR-Amazonia</a></p>
+      <p>Página de Laboratorio de Hydroinformática Brigham Young University: <a class="reference external" href="https://hydroinformatics.byu.edu/" target="_blank">Página BYU</a></p>
+      <p>Video de Brigham Young University-GEOGloWS: <a class="reference external" href="https://youtu.be/PLG8U8AQmXY" target="_blank">Video BYU</a></p>
+    </div>
+  </div>
+  
+  </div>
+
+
+{% endblock %}
+
+{% block after_app_content %}
+{% endblock %}
+
+{% block app_actions %}
+{% endblock %}
+
+{% block content_dependent_styles %}
+  {{ block.super }}
+  <link href="{% static 'historical_validation_tool_colombia/css/user_manual.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{% block scripts %}
+  {{ block.super }}
+  <script src="{% static 'historical_validation_tool_colombia/js/manual.js' %}" type="text/javascript"></script>
+{% endblock %}

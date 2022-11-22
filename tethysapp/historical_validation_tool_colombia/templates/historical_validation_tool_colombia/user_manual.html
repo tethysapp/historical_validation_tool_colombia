@@ -1,0 +1,209 @@
+{% extends "historical_validation_tool_colombia/base.html" %}
+{% load staticfiles %}
+
+{% block import_gizmos %}
+{% endblock %}
+
+
+{% block header_buttons %}
+  <div class="header-button glyphicon-button" data-toggle="tooltip" data-placement="bottom" title="About">
+    <a data-toggle="modal" data-target="#about"><span class="glyphicon glyphicon-info-sign"></span></a>
+  </div>
+{% endblock %}
+
+
+{% block app_navigation_items %}
+{% url "historical_validation_tool_colombia:home" as home %}
+{% url "historical_validation_tool_colombia:user_manual" as user_manual %}
+{% url "historical_validation_tool_colombia:technical_manual" as technical_manual %}
+
+<li class="{% if request.path == home %}active{% endif %}"><a href="{{ home }}">Aplicación</a></li>
+<li class="{% if request.path == user_manual %}active{% endif %}"><a href="{{ user_manual }}">Manual de Usuario</a></li>
+<li class="{% if request.path == technical_manual %}active{% endif %}"><a href="{{ technical_manual }}">Manual Técnico</a></li>
+{% endblock %}
+
+
+{% block app_content %}
+<div class="main_content">
+  <div>
+    <center><h1><strong>MANUAL DE USUARIO</strong></h1></center>
+    <p>Este website contiene una guía para el manejo de la aplicación <strong>Historical Validation 
+      Tool</strong>, alojada en la plataforma tethys del IDEAM. Naciendo de la colaboración entre el 
+      centro internacional de agricultura tropical (CIAT), el Instituto de Hidrología, Meteorología 
+      y Estudios Ambientales (IDEAM) y la Brigham Young University (BYU) frente al CGIAR mediante el 
+      programa SERVIR-Amazonia. Esta web posee una arquitectura desarrollada a partir de la herramienta 
+      Tethys-platform con servicios y bases de datos gestionados por HydroShare, Aquaveo, GeoGloWS, 
+      entre otros. </p>
+  </div>
+
+
+  <div>
+    <center><h2><strong>HISTORICAL VALIDATION TOOL</strong></h2></center>
+
+    <div class="fb_1">
+      <div class="fb_11">
+        <p><center><img src="{% static 'historical_validation_tool_colombia/images/historic_validation_colombia_logo_v2.png' %}" style="width: 200px;" /> </center></p>
+      </div>
+      <div class="fb_12">
+        <p>La Aplicación <strong> Historical Validation Tool</strong> usa los datos observados de caudal
+          históricos de las estaciones monitoreadas por el IDEAM para ajustar los resultados obtenidos por 
+          el modelo GEOGloWS ECMWF Streamflow para las estaciones hidrológicas en Colombia. 
+          <strong>En esta aplicación se puede visualizar pronóstico de caudal con un horizonte de 15 días 
+          y adicional se muestra la corrección de sesgo.</strong> La corrección de sesgo usada se basa en 
+          curvas de duración de caudales mensuales descrito por <a href="https://doi.org/10.3390/hydrology8020071"> Sanchez-Lozano,2021.</a></p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h3><strong>Interfaz principal</strong></h3>
+    <p>La interfaz de usuario muestra la delimitación de los ríos en azul y de las estaciones con puntos 
+      en rojo. Para cada estación, el usuario puede ver series de tiempo y calcular métricas de error.</p>
+    <p><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/home.png' %}" style="width: 600px;" /> </center></p>
+
+    <p>Tanto los ríos como las estaciones pueden ser activados o desactivados del mapa base, como se muestra en la siguiente 
+      imagen:</p>
+    <p><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/stationless_and_streamless.png' %}" style="width: 600px;" /> </center></p>
+
+    <p> A la izquierda de la pantalla se muestra un panel con algunas <strong>opciones de 
+      visualización.</strong></p>
+    <center><img id="botondesplegable=" src="{% static 'historical_validation_tool_colombia/images/imgs/legend.png' %}" style="width: 200px;"></center>
+    
+  </div>
+
+  <div>
+    <h3><strong>Panel de visualización</strong></h3>
+    <p> Las opciones de visualización en el panel son zon utilizadas para realizar zoom a diferentes 
+      sectores del pais. Las principales divisiones son por: Departamentos, Zonas hidrográfias, Sub 
+      Zonas hidrográficas y realizar una búsqueda por estaciones, nombres de estaciones o cauces:</p>
+
+    <ol>
+      <li><strong>Departamentos</strong>
+        <p> Colombia se divide en 32 departamentos, teniendo cada uno de estos diferentes estaciones 
+         de medicion de caudal. A manera de ejemplo, el usuario puede hacer clic en el botón <i> Zoom al 
+         Departamento</i> y seleccionar el departamento al cual quiera realizar zoom, obteniendo 
+         un resultado como el mostrado a continuación:</p>
+        <a class="reference internal image-reference" href="_images/choco_ep.png"><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/choco_ep.png' %}" style="width: 500px;" /></center></a>
+      </li>
+
+      <li><strong>Zonas hidrográficas</strong>
+        <p>Desde el punto de vista hidrológico Colombia se divide en 41 zonas hidrográficas con el fin de 
+          clasificar y zonificar el territorio nacional con fines de la planificación y ordenamiento 
+          ambiental del territorio. A manera de ejemplo, el usuario puede hacer click en el botón
+          <i>Zoom a Z.H.</i> y seleccionar de la lista despegable las diferentes zonas hidrográficas,
+          al seleccionar una de estas, podrá hacer zoom a la zona hidrográfica seleccionada. Como se muestra 
+          a continuación.</p>
+        <a class="reference internal image-reference" href="_images/cablit_ep.png"><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/cablit_ep.png' %}" style="width: 500px;" /></center></a>
+      </li>
+
+      <li><strong>Sub zonas hidrográficas</strong>
+        <p>Desde el punto de vista hidrológico Colombia divide sus zonas hidrográficas dada la extención de
+          estas, estas divisiones se denomina subzonas hidrográficas, siendo el pais dividido en 351 sub 
+          zonas hidrográficas. A manera de ejemplo, el usuario puedeclic en el botón <i>Zoom a 
+            S.Z.H.</i>, y posteriormente seleccionar la zona a la cual se realizará el zoom. Como 
+          se observa en la imagen a continuación.</p>
+        <a class="reference internal image-reference" href="_images/lamiel_ep.png"><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/lamiel_ep.png' %}" style="width: 700px;" /></center></a>
+      </li>
+
+      <li><strong>Búsqueda por estación</strong>
+        <p>De igual manera, se presenta la busqueda de estaciones.Donde se puede realizar la búsqueda 
+          de las estaciones disponibles a partir de diferentes criterios, siendo estos: el còdigo de 
+          la estaciòn, el nombre de la estaciòn, COMID (codigo de identificación del río asociado a la 
+          estación) y por el nombre del río. A manera de ejemplo, se hará la busqueda de las estaciones 
+          sobre el rìo Magdalena.</p>
+          
+          <p>Se ingresa el nombre del rio en el espacio <i>Busqueda por estación</i>, se seleccionará el
+            nombre de la lista desplegada y se hará click en el icono de lupa que se encuentra en la parte 
+            inferior. A continuaciòn se muestran el resultado.</p>
+          <a class="reference internal image-reference" href="_images/rio_busqueda.png"><center><img alt="_images/busqueda_rio.png" class="align-center" src="{% static 'historical_validation_tool_colombia/images/imgs/rio_busqueda.png' %}" style="width: 500px;" /></center></a>
+      </li>
+    </ol>
+
+    <p>Una vez identificada la estación de interés se procede a hacer clic en la misma, apareciendo una 
+      ventana emergente con los datos de la misma.
+
+  </div>
+
+  <div>
+    <h3><strong>Datos de la estación</strong></h3>
+    <p>Al hacer clic en la estación, aparecerá una ventana emergente con los datos de la misma (nombre y 
+      código de la estación, COMID asociado al río y el nombre del rìo). La ventana emergente, mostrarán 
+      4 pestañas diferentes: hidrogramas, análisis visual, reporte de métricas y pronóstico.</p>
+
+    <ul>
+      <li>
+        <h4><strong>Hidrograma</strong></h4>
+        <p>La pestaña muestra el hidrograma con los valores observados de caudal, la simulación histórica y la simulación
+          histórica corregida. Este gráfico muestra la mejora entre el hidrograma de datos históricos simulados (rojo) y el
+          hidrograma de datos con corrección de sesgo (verde). El usuario puede activar y desactivar cada una de las opciones
+          del hidrograma, como se muestra en la siguiente imagen:</p>
+        <p><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/hydrographobserveddata.png' %}" style="width: 700px;" /> </center></p>
+        <p>Para descargar la imagen, puede hacerlo en los botones de la derecha en el ícono de cámara. Adicional, en la
+          misma ubicación puede realizar zoom al gráfico y restaurar los ejes como la serie de tiempo en caso
+          de realizar zoom a los datos del gráfico</p>
+      </li>
+
+      <li>
+        <h4><strong>Análisis visual</strong></h4>
+        <p>La segunda pestaña en la ventana emergente es el análisis visual: observando el promedio diario, promedio mensual,
+          diagrama de dispersión, diagrama de dispersión usando escala logarítmica, diagrama de análisis de volumen (simulación 
+          histórica de 40 años combinada con el volumen total que pasó por la estación, el cual fue calculado utilizando el 
+          caudal diario) y tabla de análisis de volumen un determinado lugar.</p>
+        <p><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/visualanalysis.png' %}" style="width: 600px;" /> </center></p>
+      </li>
+
+      <li>
+        <h4><strong>Informe de métricas</strong></h4>
+        <p>La tercera pestaña en la ventana emergente es el informe de métricas. El informe de métricas tiene una lista de
+          métricas predeterminadas, pero los usuarios pueden agregar métricas adicionales de las disponibles en el paquete
+          HydroStats. La interfaz proporciona métricas de error que pueden cuantificar la comparación y la evaluación de la
+          mejora entre la simulación histórica corregida por sesgo y la simulación histórica original de acuerdo con las
+          diversas métricas de error.</p>
+        <p><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/metricsreport.png' %}" style="width: 600px;" /> </center></p>
+      </li>
+
+      <li>
+        <h4><strong>Pronóstico</strong></h4>
+        <p>La pestaña muestra el pronóstico original y el pronóstico corregido por sesgo en los gráficos superior e inferior,
+          respectivamente. El gráfico superior muestra el pronóstico original antes de la corrección del sesgo, los umbrales de
+          los períodos de retorno calculados a partir de la simulación histórica. El gráfico de pronóstico inferior muestra el
+          pronóstico corregido sesgado, con umbrales de períodos de retorno calculados a partir de la simulación histórica
+          corregida por sesgo.
+        <p><center><img src="{% static 'historical_validation_tool_colombia/images/imgs/forecast.png' %}" style="width: 600px;" /> </center></p>
+        <p>Los dos gráficos de pronósticos provienen de 51 simulaciones diferentes y uno de alta resolución, muestran los percentiles
+          de caudal 25 y 75, caudales máximo y mínimo y un pronóstico de alta resolución. La leyenda desplegada en la derecha
+          muestra las diferentes capas se pueden activar y desactivar de los periodos de retorno calculados para la simulación
+          histórica y la simulación histórica corregida por sesgo. Los datos de cada período de tiempo aparecen al pasar el
+          cursor sobre el gráfico. Los datos pueden ser descargados desde la pestaña final.</p>
+      </li>
+    </ul>
+  </div>
+
+  <div>
+    <h3><strong>Páginas de Interés</strong></h3>
+    <p>Página de IDEAM: <a class="reference external" href="http://www.ideam.gov.co/" target="_blank">IDEAM</a></p>
+    <p>Página de CIAT: <a class="reference external" href="https://ciat.cgiar.org/?lang=es" target="_blank">CIAT</a></p>
+    <p>Página de SERVIR-Amazonia: <a class="reference external" href="https://servir.ciat.cgiar.org/?lang=es" target="_blank">SERVIR-Amazonia</a></p>
+    <p>Página de Laboratorio de Hydroinformática Brigham Young University: <a class="reference external" href="https://hydroinformatics.byu.edu/" target="_blank">Página BYU</a></p>
+    <p>Video de Brigham Young University-GEOGloWS: <a class="reference external" href="https://youtu.be/PLG8U8AQmXY" target="_blank">Video BYU</a></p>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block after_app_content %}
+{% endblock %}
+
+{% block app_actions %}
+{% endblock %}
+
+{% block content_dependent_styles %}
+  {{ block.super }}
+  <link href="{% static 'historical_validation_tool_colombia/css/user_manual.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{% block scripts %}
+  {{ block.super }}
+  <script src="{% static 'historical_validation_tool_colombia/js/manual.js' %}" type="text/javascript"></script>
+{% endblock %}

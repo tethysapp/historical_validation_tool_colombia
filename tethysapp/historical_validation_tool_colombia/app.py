@@ -89,21 +89,21 @@ class HistoricalValidationToolColombia(TethysAppBase):
             ),
             ########################################################
             ########################################################
-            UrlMap(
-                name = 'get_plotreturnperiod',
-                url  = 'get-plotreturnperiod',
-                controller='historical_validation_tool_colombia.controllers.get_plotreturnperiod'
-            ),
-            UrlMap(
-                name = 'get_confusionmatrix',
-                url  = 'get-confusionmatrix',
-                controller='historical_validation_tool_colombia.controllers.get_confusionmatrix'
-            ),
-            UrlMap(
-                name = 'get_tableconfusionmatrix',
-                url  = 'get-tableconfusionmatrix',
-                controller = 'historical_validation_tool_colombia.controllers.get_tableconfusionmatrix',
-            ),
+            # UrlMap(
+            #     name = 'get_plotreturnperiod',
+            #     url  = 'get-plotreturnperiod',
+            #     controller='historical_validation_tool_colombia.controllers.get_plotreturnperiod'
+            # ),
+            # UrlMap(
+            #     name = 'get_confusionmatrix',
+            #     url  = 'get-confusionmatrix',
+            #     controller='historical_validation_tool_colombia.controllers.get_confusionmatrix'
+            # ),
+            # UrlMap(
+            #     name = 'get_tableconfusionmatrix',
+            #     url  = 'get-tableconfusionmatrix',
+            #     controller = 'historical_validation_tool_colombia.controllers.get_tableconfusionmatrix',
+            # ),
             #########################################################
             ########################################################
             UrlMap(
@@ -163,6 +163,16 @@ class HistoricalValidationToolColombia(TethysAppBase):
             ),
             ########################################################
             ########################################################
+            UrlMap(
+                name = 'user_manual',
+                url = 'historical-validation-tool-colombia/user_manual',
+                controller='historical_validation_tool_colombia.controllers.user_manual',
+            ),
+            UrlMap(
+                name = 'technical_manual',
+                url = 'historical-validation-tool-colombia/technical_manual',
+                controller='historical_validation_tool_colombia.controllers.technical_manual',
+            ),
         )
 
         return url_maps

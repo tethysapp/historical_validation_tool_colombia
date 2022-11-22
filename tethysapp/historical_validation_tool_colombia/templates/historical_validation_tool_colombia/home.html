@@ -44,9 +44,9 @@
         {# Search window #}
         <div>
           <form>
-            <label>Search: </label>
+            <label>Búsqueda por estación: </label>
             <input id="search-txt" type="text" class="form-control" 
-           placeholder="ejemplo" onkeyup="remove_names_for_list()">
+           placeholder="Ejemplo" onkeyup="remove_names_for_list()">
           </form>
         </div>
 
@@ -162,16 +162,6 @@
                   <div class="metric-table" id="volume_table_div" style="display:none">
                     <div id="volume_table"><!-- The table or errors go here --></div>
                   </div>
-                  <!--
-                  <div class="flex-container-row"><img id="plotreturnperiod-loading" class="view-file hidden" src="{% static 'historical_validation_tool_colombia/images/loader.gif' %}" /></div>
-                  <div id="plotreturnperiod-chart"></div>
-                  
-                  <div class="flex-container-row"><img id="confusionmatrix-loading" class="view-file hidden" src="{% static 'historical_validation_tool_colombia/images/loader.gif' %}" /></div>
-                  <div id="confusionmatrix-chart"></div>
-                  
-                  <div class="flex-container-row"><img id="tableconfusionmatrix-loading" class="view-file hidden" src="{% static 'historical_validation_tool_colombia/images/loader.gif' %}" /></div> 
-                  <div id="tableconfusionmatrix-chart"></div>
-                  -->
                 </div>
               </div>
             </div>
@@ -313,19 +303,60 @@
       <div class="modal-content">
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          <h5 class="modal-title" id="help-modal-label">Historical Validation Tool</h5>
+          <h5 class="modal-title" id="help-modal-label">Historical Validation Tool Colombia</h5>
         </div>
         <div class="modal-body">
-          <p>The Historical Validation Tool customized for Colombia is a light-weight application for evaluate and bias-correct the historical simulation for the GEOGloWS ECMWF Streamflow Prediction Tool in Colombia.</p>
-          <p>This app allows us to use the hydrostats functionality in order to evaluate how accurate is the historical simulation and the bias-corrected historical simulation in the GEOGloWS ECMWF Streamflow Prediction Tool compared to the observed streamflow in 412 Gauging Stations in Colombia.</p>
-          <p>Additionally, this bias-correction is extended to the GEOGloWS ECMWF Streamflow Prediction Tool short term forecast</p>
-          <p>Users can click on any station in the map to retrieve observed and simulated data.</p>
-          <ol>
-            <li> The first tab displays a plot of the historical observed data, the GEOGloWS ECMWF Streamflow Prediction Tool historic simulation and bias-correction simulation data for 40 years from 1979 to 2018, and the bias corrected simulated hydrograph for 35 years from 1980 to 2015.</li>
-            <li> The second tab displays the Visual Analysis included in Hydrostats. It includes plots for the daily average streamflow, the monthly average streamflow, the scatter plot, the scatter plot in the log scale, the volume analysis for the corrected simulated, simulated, and observed volume.</li>
-            <li> The third tab includes a table report with some predefined list of metrics. It also allows you select a set of metrics that you want to use in order to validate the historical simulation of the Streamflow Prediction Tool.</li>
-            <li> The fourth tab displays a plot with the GEOGloWS ECMWF Streamflow Prediction Tool forecast data and the bias corrected forecast data.</li>
-          </ol>
+          <p>La app <strong>Historical Validation Tool personalizada para Colombia</strong> es una 
+            aplicación cuyo objetivo es evaluar y corregir el sesgo de las simulaciones históricas 
+            y los pronósticos generados por el modelo <a href="https://geoglows.ecmwf.int/">GeoGloWS 
+              ECMWF Streamflow</a> para el territorio colombiano.</p> 
+              
+          <p>Esta aplicación nos permite, por medio de la librería hydrostats, evaluar la precisión 
+            de la simulación histórica y la simulación histórica con corrección del sesgo del 
+            modelo <a href="https://geoglows.ecmwf.int/">GeoGloWS ECMWF Streamflow</a> en comparación 
+            con el caudal observado en las estaciones de medición del Instituto de Hidrología, 
+            Meteorología y Estudios Ambientales (IDEAM) de Colombia.</p>
+            
+            <p>Los usuarios pueden hacer 
+              uso de la búsqueda por sectores (departamentos, zonas hidrográficas, subzonas hidrográficas 
+              o nombre de la estación, código de la estación o nombre de la corriente) ubicada en la 
+              parte inferior izquierda de la pantalla y posteriormente hacer clic en la estación en 
+              el mapa para obtener las series de caudales observados, simulados y simulados 
+              corregidos.</p> 
+              
+              <ol> 
+                <li> La primera pestaña muestra un hidrograma con la serie histórica 
+                diaria de caudal observado, 43 años de series de caudal simuladas por medio del modelo 
+                GeoGloWS ECMWF Streamflow y simuladas con corrección del sesgo (de 1979 a 2022). 
+                Adicionalmente la opción de descargar las tres series en formato csv.</li> 
+              <li> La segunda pestaña muestra el análisis visual construido a partir de Hydrostats. 
+                Donde se incluyen; el gráfico con los promedio diarios multianuales de las series 
+                históricas observadas, las series históricas simuladas y las series históricas simuladas 
+                corregidas, el gráfico con los promedios mensuales multianuales, de las tres series, el 
+                gráfico con los diagramas de dispersión en escala normal y logarítmica (evaluando la 
+                dispersión entre los datos observados y simulados), y finalmente, los caudales diarios 
+                acumulados para el analisis de volumenes.</li>
+              <li> La tercera pestaña incluye un reporte con un listado de métricas de desempeño entre 
+                las series de caudales observadas contra simuladas y observadas contra simuladas corregidas. 
+                De igual manera, se presentan 6 métricas adicionales para validar la simulación histórica 
+                de la herramienta.</li> 
+              <li>La cuarta pestaña muestra un gráfico con los datos de pronóstico, mostrando este a escala 
+                diaria para los últimos 8 días y el futuro de alta resolución de los proximos 10 dias. En 
+                línea punteada los caudales mínimos y máximos de los 52 ensambles. En línea verde el espectro 
+                está delimitado por el percentil 25 y el 75 de los 52 conjuntos. En línea azul se presenta 
+                el promedio de los ensambles. También se presentan los umbrales de los periodos de retorno 
+                calculados de la serie de caudal histórica modelada para el tramo. Siendo, la primera gráfica 
+                con los datos modelados sin corregir y la segunda con la corrección del sesgo sobre estos. 
+                Finalmente, se presenta la posibilidad de descargar ambas series temporales.</li>
+              </ol>
+
+          <h5>Recursos adicionales:</h5>
+          <ul>
+            <li><a href="{% url 'historical_validation_tool_colombia:user_manual' %}">Manual de usuario.</a></li>
+            <li><a href="{% url 'historical_validation_tool_colombia:technical_manual' %}">Manual tecnico.</a></li>
+            <li><a href="https://www.ecmwf.int/en/about/what-we-do/global-forecasts" target="_blank">ECMWF Global Forecasts</a></li>
+            <li><a href="https://github.com/BYU-Hydroinformatics/historical_validation_tool_colombia.git" target="_blank">Git Hub</a></li>            
+          </ul>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>

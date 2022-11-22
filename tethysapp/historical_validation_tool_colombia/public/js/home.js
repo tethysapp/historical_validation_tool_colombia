@@ -21,15 +21,7 @@ function get_requestData (watershed, subbasin, streamcomid, stationcode, station
           $('#scatterPlot-loading').addClass('hidden');
           $('#scatterPlotLogScale-loading').addClass('hidden');
           $('#volumeAnalysis-loading').addClass('hidden');
-            // ###################################################
-            // ###################################################
-            /*
-            $('#plotreturnperiod-loading').addClass('hidden');
-            $('#confusionmatrix-loading').addClass('hidden');
-            $('#tableconfusionmatrix-loading').addClass('hidden');
-            */
-            // ###################################################
-            // ###################################################
+
           $('#forecast-loading').addClass('hidden');
           $('#forecast-bc-loading').addClass('hidden');
           setTimeout(function () {
@@ -254,15 +246,15 @@ function get_hydrographs (watershed, subbasin, streamcomid, stationcode, station
         		get_time_series(watershed, subbasin, streamcomid, stationcode, stationname, startdate);
                 // ####################################################################################
                 // ####################################################################################
-                
+                /*
                 get_plotreturnperiod(watershed, subbasin, streamcomid, stationcode, stationname);
                 get_confusionmatrix(watershed, subbasin, streamcomid, stationcode, stationname);
                 get_tableconfusionmatrix(watershed, subbasin, streamcomid, stationcode, stationname);
+                */
+                // ####################################################################################
+                // ####################################################################################
                 
-                // ####################################################################################
-                // ####################################################################################
-
-           		 } else if (data.error) {
+                } else if (data.error) {
            		 	$('#hydrographs-loading').addClass('hidden');
                  	console.log(data.error);
            		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
@@ -647,15 +639,7 @@ function map_events() {
 				$('#volumeAnalysis-chart').addClass('hidden');
 				$('#forecast-chart').addClass('hidden');
 				$('#forecast-bc-chart').addClass('hidden');
-                // ##############################################
-                // ##############################################
-                /*
-                $('#plotreturnperiod-chart').addClass('hidden');
-                $('#confusionmatrix-chart').addClass('hidden');
-                $('#tableconfusionmatrix-chart').addClass('hidden');
-                */
-                // ##############################################
-                // ##############################################
+
 				$('#hydrographs-loading').removeClass('hidden');
 				$('#dailyAverages-loading').removeClass('hidden');
 				$('#monthlyAverages-loading').removeClass('hidden');
@@ -712,15 +696,7 @@ function map_events() {
               		  $('#volumeAnalysis-loading').addClass('hidden');
               		  $('#forecast-loading').addClass('hidden');
               		  $('#forecast-bc-loading').addClass('hidden');
-                      // ##################################################################
-                      // ##################################################################
-                      /*
-                      $('#plotreturnperiod-loading').addClass('hidden');
-                      $('#confusionmatrix-loading').addClass('hidden');
-                      $('#tableconfusionmatrix-loading').addClass('hidden');
-                      */
-                      // ##################################################################
-                      // ##################################################################
+
                     }
                 });
             }
@@ -763,20 +739,7 @@ function resize_graphs() {
         	'xaxis.autorange': true,
         	'yaxis.autorange': true
         });
-        // ##################################################
-        /*
-        Plotly.Plots.resize($("#plotreturnperiod-chart .js-plotly-plot")[0]);
-        Plotly.relayout($("#plotreturnperiod-chart .js-plotly-plot")[0], {
-            "xaxis.autorange": true,
-            "yaxis.autorange": true
-        });
-        Plotly.Plots.resize($("confusionmatrix-chart .js-plotly-plot")[0]);
-        Plotly.relayout($("confusionmatrix-chart .js-plotly-plot")[0], {
-            "xaxis.autorange": true,
-            "yaxis.autorange": true
-        });
-        */
-        // ###########################################################
+
     });
 
     $("#forecast_tab_link").click(function() {
@@ -1540,178 +1503,3 @@ function get_time_series_bc(watershed, subbasin, streamcomid, stationcode, stati
         }
     });
 }
-
-//###################################################
-//###################################################
-function get_plotreturnperiod(watershed, subbasin, streamcomid, stationcode, stationname) {
-    $('#plotreturnperiod-loading').removeClass('hidden');
-    m_downloaded_historical_streamflow = true;
-    $.ajax({
-        url: 'get-plotreturnperiod',
-        type: 'GET',
-        data: {
-            'watershed': watershed,
-            'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
-        },
-
-        error: function () {
-            console.loc(e);
-            $('#plotreturnperiod-loading').addClass('hidden');
-            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data</strong></p>');
-            $('#info').removeClass('hidden');
-
-            setTimeout(function () {
-                $('#info').addClass('hidden')
-            }, 5000);
-
-        },
-        success: function (data) {
-            if (!data.error) {
-
-                console.log("get_plotreturnperiod in.");
-                $('#plotreturnperiod-loading').addClass('hidden');
-                $loading.addClass('hidden');
-                $('#plotreturnperiod-chart').removeClass('hidden');
-                $('#plotreturnperiod-chart').html(data);
-
-                Plotly.Plots.resize($("#plotreturnperiod-chart .js-plotly-plot")[0]);
-                Plotly.relayout($("#plotreturnperiod-chart .js-plotly-plot")[0], {
-                    'xaxis.autorange': true,
-                    'yaxis.autorange': true
-                });
-
-            } else if (data.error) {
-                console.log(data.error);
-                $('#plotreturnperiod-loading').addClass('hidden');
-                $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
-                $('#info').removeClass('hidden');
-
-                setTimeout(function () {
-                    $('#info').addClass('hidden')
-                }, 5000);
-
-            } else {
-                $('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
-            }
-            console.log("get_plotreturnperiod out");
-        }
-
-    });
-}
-
-
-function get_confusionmatrix(watershed, subbasin, streamcomid, stationcode, stationname, startdate) {
-    $('#confusionmatrix-loading').removeClass('hidden');
-    m_downloaded_historical_streamflow = true;
-    $.ajax({
-        url: 'get-confusionmatrix',
-        type: 'GET',
-        data: {
-            'watershed': watershed,
-            'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
-        },
-
-        error: function () {
-            console.loc(e);
-            $('#confusionmatrix-loading').addClass('hidden');
-            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data</strong></p>');
-            $('#info').removeClass('hidden');
-
-            setTimeout(function () {
-                $('#info').addClass('hidden')
-            }, 5000);
-
-        },
-        success: function (data) {
-            if (!data.error) {
-
-                console.log("get-confusionmatrix in.");
-                $('#confusionmatrix-loading').addClass('hidden');
-                $loading.addClass('hidden');
-                $('#confusionmatrix-chart').removeClass('hidden');
-                $('#confusionmatrix-chart').html(data);
-
-                Plotly.Plots.resize($("#confusionmatrix-chart .js-plotly-plot")[0]);
-                Plotly.relayout($("#confusionmatrix-chart .js-plotly-plot")[0], {
-                    'xaxis.autorange': true,
-                    'yaxis.autorange': true
-                });
-
-            } else if (data.error) {
-                console.log(data.error);
-                $('#confusionmatrix-loading').addClass('hidden');
-                $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
-                $('#info').removeClass('hidden');
-
-                setTimeout(function () {
-                    $('#info').addClass('hidden')
-                }, 5000);
-
-            } else {
-                $('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
-            }
-            console.log("get_confusionmatrix out");
-        }
-
-    });
-}
-
-
-function get_tableconfusionmatrix(watershed, subbasin, streamcomid, stationcode, stationname, startdate) {
-    $('#tableconfusionmatrix-loading').removeClass('hidden');
-    m_downloaded_historical_streamflow = true;
-    $.ajax({
-        url: "get-tableconfusionmatrix",
-        type: "GET",
-        data: {
-            'watershed': watershed,
-            'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
-        },
-        error: function () {
-            console.loc(e);
-            $('#tableconfusionmatrix-loading').addClass('hidden');
-            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data</strong></p>');
-            $('#info').removeClass('hidden');
-
-            setTimeout(function () {
-                $('#info').addClass('hidden')
-            }, 5000);
-        },
-        success: function (data) {
-            if (!data.error) {
-                console.log("get_tableconfusionmatrix in.");
-                $('#tableconfusionmatrix-loading').addClass('hidden');
-                $('#tableconfusionmatrix-chart').removeClass('hidden');
-
-                $('#tableconfusionmatrix-chart').html(data);
-
-                $('#table-confusion-matrix').addClass('table');
-                $('#table-confusion-matrix').addClass('table-hover');
-                $('#table-confusion-matrix').addClass('table-striped');
-
-            } else if (data.error) {
-                console.log(data.error);
-                $('#tableconfusionmatrix-loading').addClass('hidden');
-                $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
-                $('#info').removeClass('hidden');
-
-                setTimeout(function () {
-                    $('#info').addClass('hidden')
-                }, 5000);
-            } else {
-                $('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
-            }
-            console.log("get_tableconfusionmatrix out.");
-
-        },
-    });
-};

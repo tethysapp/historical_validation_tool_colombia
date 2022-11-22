@@ -1,0 +1,23 @@
+.main_content{
+    padding: 3.5%;
+    max-width: 1000px;
+    min-width: 800px;
+    margin: auto;
+    
+} 
+
+h1 {background-color: #002255; color: white;   padding: 7px 20px 5px 20px; margin-top: 1px; }
+h2 {background-color: #002255; color: white;   padding: 7px 20px 5px 20px; margin-top: 50px; }
+h3 {background-color: #002255; color: white;   padding: 7px 20px 5px 20px; margin-top: 50px; }
+h4 {background-color: white;   color: #002255; border: #002255 solid 1px;padding: 7px 20px 5px 20px; margin-top: 50px; }
+h5 {padding: 7px 20px 5px 20px; margin-top: 50px; }
+ul {list-style-type: none;}
+img {margin: 10px;}
+
+.fb_1 {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-evenly;
+}
+.fb_11 {flex-basis: 20%;}
+.fb_12 {flex-basis: 70%; margin: 15px;}
