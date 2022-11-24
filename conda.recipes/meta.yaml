@@ -1,0 +1,47 @@
+{% set data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
+{% set name = data.get('name')|replace("tethysapp-", "")|lower %}
+
+package:
+  name: {{ name }}
+  version: {{ data.get('version') }}
+
+about:
+  author: {{ data.get('author')}}
+  description: {{ data.get('description')}}
+  license: "{'name': 'release_package', 'version': '1.2', 'description': 'This app combines the observed data and the simulated data from the GEOGloWS ECMWF Streaamflow Services in Colombia.', 'long_description': '', 'author': 'Jorge Luis Sanchez-Lozano, Jhonatan Rodriguez Chaves', 'author_email': 'jorgessanchez7@gmail.com, jhrodriguezch@unal.edu.co', 'url': '', 'license': ''}"
+  dev_url: {{ data.get('url') }}
+
+outputs:
+  - name: {{ name }}
+extra:
+  author_email: jorgessanchez7@gmail.com, jhrodriguezch@unal.edu.co
+  keywords:
+  - Hydrology
+  - Time Series
+  - Bias Correction
+  - Hydrostats
+  - GEOGloWS
+  - Historical Validation Tool
+  - Colombia
+  recipe-maintainers:
+  - TethysAppWarehouse
+
+build:
+  noarch: python
+  preserve_egg_dir: true
+  script: python setup.py install --record=record.txt
+requirements:
+  build:
+  - python
+  run:
+  - geoglows
+  - hydrostats
+  - pandas
+  - requests
+  - plotly
+  - numpy
+  - scipy
+  - hs_restclient
+  - scikit-learn
+source:
+  path: ..
